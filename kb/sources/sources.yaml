@@ -1,0 +1,37 @@
+# Candidate sources (houseplant scope). NOTHING here is ingested until the owner approves.
+# redistributable: unknown => flagged for owner; do not fetch/store text yet.
+# License notes below come from search snippets only; verify on each site's legal/copyright page.
+sources:
+  - source_id: src_ucipm_houseplant_problems
+    title: "Houseplant Problems (UC IPM Pest Notes, Publication 74172)"
+    publisher: "UC Statewide IPM Program, UC ANR"
+    url: "https://ipm.ucanr.edu/home-and-landscape/houseplant-problems/"
+    pdf_url: "https://ipm.ucanr.edu/legacy_assets/pdf/pestnotes/pnhouseplantproblems.pdf"
+    license: "© Regents of the University of California, all rights reserved; non-commercial linking allowed. Reuse needs Legal Notices review/permission."
+    date_accessed: 2026-10-02
+    redistributable: unknown
+    ingest_mode: "extract short facts + URL only, pending owner approval"
+
+  - source_id: src_psu_houseplant_problems
+    title: "Preventing, Diagnosing, and Correcting Common Houseplant Problems"
+    publisher: "Penn State Extension"
+    url: "https://extension.psu.edu/preventing-diagnosing-and-correcting-common-houseplant-problems"
+    license: "NOT YET CHECKED"
+    date_accessed: 2026-10-02
+    redistributable: unknown
+
+  - source_id: src_illinois_troubleshooting
+    title: "Troubleshooting Houseplants"
+    publisher: "University of Illinois Extension"
+    url: "https://extension.illinois.edu/sites/default/files/troubleshooting_houseplants_0.pdf"
+    license: "NOT YET CHECKED"
+    date_accessed: 2026-10-02
+    redistributable: unknown
+
+  - source_id: src_umd_indoor_plant_problems
+    title: "Diagnose Indoor Plant Problems"
+    publisher: "University of Maryland Extension"
+    url: "https://extension.umd.edu/resource/diagnose-indoor-plant-problems"
+    license: "NOT YET CHECKED"
+    date_accessed: 2026-10-02
+    redistributable: unknown
