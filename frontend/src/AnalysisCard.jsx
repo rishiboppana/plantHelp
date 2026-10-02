@@ -31,6 +31,7 @@ export default function AnalysisCard({ a, imageUrl, onAsk }) {
       {a.uncertainty && <p>🤔 {a.uncertainty}</p>}
       <h4>What to do next</h4>
       <ul>{a.checklist?.map((c) => <li key={c}>{c}</li>)}</ul>
+      {a.followup && <p>📅 I scheduled a re-check in {a.followup.days} day{a.followup.days === 1 ? '' : 's'}. You'll find it under Progress{a.followup.apple?.added?.length ? ' and in Apple Reminders' : ''}.</p>}
       {a.questions?.length > 0 && <div className="optional"><h4>Optional: tell me any of these for a better answer</h4>
         <ul>{a.questions.map((q) => <li key={q}>{q}</li>)}</ul></div>}
       <details><summary>What could be causing it</summary>

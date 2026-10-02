@@ -13,6 +13,11 @@ Visual plant health assistant: **photo → check for a problem → retrieve from
 - **Diagnosis:** the model reads the photo → each reported symptom is verified against the photo → local KB search (only if there is a problem) → the model writes the observation and 2-4 possible causes → the *code* appends next steps, sources and optional questions taken from the retrieved records.
 - Replies show one summary line; tap it for the full reasoning.
 
+## Honest answers
+- **Plant identification** (`src/identify.py`): three independent looks from the main model plus one vote each from two other model families (Gemma, Llama). `high` only when every family agrees on a clear single subject; `medium` when a majority agree ("looks like X, could also be Y, please confirm"); `low` otherwise ("could not tell which plant this is", no invented names). A plant the user names is trusted. Alternatives that nobody agrees on are never shown.
+- **Uncertainty mode:** when the likely causes span several categories, or the plant is not confirmed, the reply says so and names the one extra piece of evidence that would help most.
+- **Reference-backed answers:** diagnosis steps and sources are written by code from the retrieved records. Care and safety questions are never answered from the model's memory: they must cite a knowledge-base record whose text actually supports the answer (numbers are checked in code, wording by a second model call), otherwise the app searches the web (trusted domains first, social and video sites dropped) and answers only from those results, with links. If nothing can be confirmed it says so.
+
 ## Knowledge base (`kb/`)
 Vocabulary in `kb/vocab/` (the skill's `plantlens/references/symptoms.md` is generated from it: `python -m src.gen_skill_vocab`). Records are short paraphrased facts with a source URL; only `kb/records/reviewed/` is indexed. Validate with `python -m src.validate.validate`.
 

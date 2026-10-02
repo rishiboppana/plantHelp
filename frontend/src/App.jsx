@@ -5,13 +5,14 @@ import LeftNav from './LeftNav.jsx'
 import Garden from './Garden.jsx'
 import AnalysisCard from './AnalysisCard.jsx'
 import Reasoning from './Reasoning.jsx'
+import { ReminderNote } from './Reminders.jsx'
 
 const MODES = [['normal', 'Check-up'], ['rescue', 'SOS'], ['healthy', 'Healthy']]
 
 export default function App() {
   const [plants, setPlants] = useState([]); const [plantId, setPlantId] = useState(1)
   const [chats, setChats] = useState([]); const [chatId, setChatId] = useState(null); const [view, setView] = useState('chat')
-  const [items, setItems] = useState([]) // {role, content, image?, url?} | {analysis, url}
+  const [items, setItems] = useState([]) // {role, content, image?, url?} | {analysis, url} | {reminders}
   const [input, setInput] = useState(''); const [pending, setPending] = useState(null) // {image, url}
   const [mode, setMode] = useState('normal'); const [ctx, setCtx] = useState(null); const [busy, setBusy] = useState(false)
   const [open, setOpen] = useState(true); const [version, setVersion] = useState(0)
@@ -82,6 +83,7 @@ export default function App() {
     try {
       await api.chat({ plant_id: plantId, conversation_id: cid, messages: msgs([...items, user]), mode, skill, trace_id: tid }, (ev) => {
         if (ev.type === 'token') setItems((cur) => { const c = [...cur]; c[slot] = { ...c[slot], content: c[slot].content + ev.text }; return c })
+        else if (ev.type === 'reminders') setItems((cur) => [...cur, { reminders: ev }])
         else if (ev.type === 'span') addSpan(ev.span)
         else if (ev.type === 'context') setCtx(ev)
         else if (ev.type === 'error') setItems((cur) => { const c = [...cur]; c[slot] = { role: 'assistant', content: ev.text }; return c })
@@ -113,7 +115,7 @@ export default function App() {
                 <button className="drop" onClick={() => fileRef.current.click()}><span>📷</span>Add a photo</button>
                 <div className="hints">{['Why are the leaves yellow?', 'Is my plant getting enough water?'].map((h) => <button key={h} onClick={() => send(h)}>{h}</button>)}</div>
               </div>}
-              {items.map((m, i) => m.analysis
+              {items.map((m, i) => m.reminders ? <ReminderNote key={i} r={m.reminders} /> : m.analysis
                 ? <AnalysisCard key={i} a={m.analysis} imageUrl={m.url} onAsk={send} />
                 : (m.content || m.url) && <Fragment key={i}>
                     {m.url && m.role === 'user' && <><div className="photoanchor" /><div className="photo"><img src={m.url} alt="" /></div></>}

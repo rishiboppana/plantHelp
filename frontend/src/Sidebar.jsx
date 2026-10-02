@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { api } from './api.js'
 import { Profile, Journal, Progress, Plan } from './Panels.jsx'
 import Weather from './Weather.jsx'
+import Reminders from './Reminders.jsx'
 
 import { CallList, ContextBar, TracePanel } from './Trace.jsx'
 
-const TABS = [['Context', '🧠', 'Memory'], ['Trace', '🔬', 'Trace'], ['Plant', '🪴', 'Plant'], ['Journal', '📖', 'Journal'], ['Weather', '🌦️', 'Weather'], ['Progress', '📈', 'Progress'], ['Plan', '✅', 'Plan'], ['Live', '🎥', 'Live']]
+const TABS = [['Context', '🧠', 'Memory'], ['Trace', '🔬', 'Trace'], ['Plant', '🪴', 'Plant'], ['Journal', '📖', 'Journal'], ['Weather', '🌦️', 'Weather'], ['Progress', '📈', 'Progress'], ['Plan', '✅', 'Plan'], ['Reminders', '🔔', 'Remind'], ['Live', '🎥', 'Live']]
 
 export default function Sidebar({ open, ctx, chatId, tr, busy, onRefresh, plants, plantId, refresh, version, bump }) {
   const [tab, setTab] = useState('Context')
@@ -21,6 +22,7 @@ export default function Sidebar({ open, ctx, chatId, tr, busy, onRefresh, plants
         {tab === 'Weather' && plant && <Weather plant={plant} refresh={refresh} bump={bump} />}
         {tab === 'Progress' && <Progress plantId={plantId} version={version} onChange={bump} />}
         {tab === 'Plan' && <Plan plantId={plantId} onAdded={bump} />}
+        {tab === 'Reminders' && <Reminders plantId={plantId} chatId={chatId} />}
         {tab === 'Live' && <><h3>Live camera</h3><p>Coming soon: I'll guide you around your plant in real time.</p><button disabled>Start camera</button></>}
       </div>
     </aside>

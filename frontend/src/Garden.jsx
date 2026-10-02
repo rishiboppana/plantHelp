@@ -35,7 +35,7 @@ export default function Garden({ plants, refresh, version, bump, chatWith }) {
               <b>{p.name}</b>
               <span className={`status ${p.status}`}>{LABEL[p.status]}</span>
               <small>{p.last_diagnosis || 'No diagnosis yet'}</small>
-              <small>{p.diagnoses} check-ups · {p.open_events} to do</small>
+              <small>{p.diagnoses} check-ups · {p.open_events} to do{p.overdue_events > 0 && <b style={{ color: '#c0392b' }}> · ⏰ {p.overdue_events} overdue</b>}</small>
             </div>
           </div>
         ))}

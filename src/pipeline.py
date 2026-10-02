@@ -1,14 +1,16 @@
 """PlantLens pipeline: photo -> observation JSON (model) -> retrieve (local KB) -> reply (model, records only).
 CLI:  python -m src.pipeline --photo test_photos/x.jpg [--text "..."]   (then type follow-up answers; empty line quits)
 """
-import argparse, json, os, re, threading
+import argparse, contextvars, json, os, re, threading
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import yaml
 from src.remote_vlm import RemoteVLM, MODELS, BASE_URL
 from src.limits import context_limit
 from src.convgraph import ConvGraph, EXTRACT
 from src.retrieve import retrieve
-from src.websearch import web_search, parse_search_request, format_results
+from src.identify import identify
+from src.websearch import web_search, rank_results, parse_search_request, format_results
 from src import trace
 from src.guardrails import guard, REFUSE_IN, REFUSE_OUT
 from src.trace import span, tok
@@ -39,12 +41,80 @@ def _iou(r, b):
     return inter / (r["w"] * r["h"] + b[2] * b[3] - inter)
 
 
+def plant_from_text(text):
+    """A plant the user named themselves ("it's a pothos") is trusted over any guess from the photo."""
+    low = " " + re.sub(r"[^a-z0-9' ]", " ", (text or "").lower()) + " "
+    hits = [n for n in PLANT_NAMES if f" {n} " in low]
+    return max(hits, key=len) if hits else None
+
+
+def plant_line(plant):
+    """How the plant should be named, honestly: confirmed / looks like (maybe) / unknown."""
+    name, conf, c = (plant or {}).get("name"), (plant or {}).get("confidence"), [x for x in (plant or {}).get("candidates", []) if x]
+    others = [x for x in c if x != name][:2]
+    try: shared = int(str((plant or {}).get("agree", "2/2")).split("/")[0]) >= 2
+    except ValueError: shared = True
+    if not shared: c, others = [], []                   # candidates nobody agrees on are noise, not alternatives
+    if conf == "high" and name: return f"{name}"
+    if conf == "medium" and name: return f"looks like {name}" + (f" (could also be {' or '.join(others)})" if others else "") + ", not confirmed"
+    return "could not tell which plant this is" + (f" (maybe {', '.join(c[:3])})" if c else "")
+
+
+CARE_FACT = re.compile(r"\b(water\w*|light|sun\w*|shade|fertili\w+|feed\w*|repot\w*|prun\w+|trim\w*|propagat\w+|toxic|poison\w*|safe|pets?|cats?|dogs?|child\w*|kids?|edible|eat\w*|temperature|cold|heat|humid\w*|mist\w*|soil|how (?:often|much|long|many)|when (?:should|to)|should i|can i)\b", re.I)
+
+
+def search_query(text, obs):
+    """A web query that names the plant when it is known, and asks for an authoritative toxicity source on safety questions."""
+    plant = (obs or {}).get("plant") or {}
+    name = plant.get("name") if plant.get("confidence") in ("high", "medium") and plant.get("name") not in (None, "unknown") else ""
+    q = f"{name} {text}".strip()
+    if re.search(r"toxic|safe|poison|pet|\bcats?\b|\bdogs?\b|child|kid", text or "", re.I): q += " toxicity ASPCA"
+    return q[:150]
+
+
+def numbers_unsupported(answer, recs):
+    """True when the answer states a number (days, hours, inches...) that none of the cited records contains."""
+    text = " ".join(f"{r['summary']} {' '.join(r['next_actions'])} {' '.join(r['inspect_next'])} {r.get('caveats') or ''}" for r in recs).lower()
+    plain = re.sub(r"\[rec_\d+\]|\[\d+\]", "", answer)
+    return [n for n in re.findall(r"\d+(?:\.\d+)?", plain) if n not in text]
+
+
+def uncertainty_note(obs, kb):
+    """Uncertainty mode: say plainly when the answer is a guess, and name the one extra piece of evidence that would help most."""
+    recs = [r["record"] for r in kb.get("results", [])][:3]
+    plant = obs.get("plant") or {}
+    reasons = []
+    if len(recs) >= 2 and (len({r["cause_category"] for r in recs}) >= 2 or kb.get("coverage") == "weak"): reasons.append("causes")
+    if plant.get("confidence") != "high": reasons.append("plant")
+    if plant.get("subject_clear") is False: reasons.append("several_plants")
+    evidence = None
+    for i, r in enumerate(recs):
+        others = {x for j, o in enumerate(recs) if j != i for x in o["inspect_next"]}
+        evidence = next((x for x in r["inspect_next"] if x not in others), None)
+        if evidence: break
+    if not evidence and recs:
+        q = recs[0]["distinguishing_questions"]
+        evidence = q[0]["question"] if q else None
+    return {"reasons": reasons, "causes": [r["cause"] for r in recs], "evidence": evidence, "plant": plant_line(plant) if "plant" in reasons else None}
+
+
+def uncertainty_text(note):
+    """The block shown in the expandable detail; empty when there is nothing to hedge."""
+    out = []
+    if "causes" in note["reasons"] and len(note["causes"]) >= 2:
+        out.append("These causes look alike from a photo: " + ", ".join(note["causes"][:-1]) + " and " + note["causes"][-1] + "."
+                   + (f" The most useful next evidence: {note['evidence'].rstrip('.?')}." if note["evidence"] else ""))
+    if note["plant"]: out.append(f"I {note['plant']}; telling me which plant it is will sharpen the advice.")
+    if "several_plants" in note["reasons"]: out.append("The photo shows more than one plant, so I am describing the most prominent one.")
+    return ("**Not sure yet:** " + " ".join(out)) if out else ""
+
+
 DIAGNOSE_COMMANDS = ("/diagnose", "/plantlens", "/check")
 
 ROUTER = """You route messages in a plant-care chat. Reply with ONE word:
 DIAGNOSE - the user wants to find out what is wrong, or whether the plant is okay, or asks to check/diagnose a problem.
 ANSWER - the message gives information in reply to the assistant's questions, such as 'yes', 'it's a cactus' or 'the soil is dry' (only possible if awaiting_answers is yes). A message that ASKS a question is never ANSWER.
-QUESTION - any other plant question: care, how much to water, light, repotting, identification, safety, what to do about one leaf.
+QUESTION - any other plant question: care, how much to water, light, repotting, identification, what to do about one leaf, and whether a plant is toxic or safe for cats, dogs, children or people.
 OFFTOPIC - not about plants.
 If has_photo is yes and the message is a greeting, a statement, or asks about health, choose DIAGNOSE. With a photo, choose QUESTION only when the user asks something specific that is not about what is wrong (for example how much to water, or what plant this is)."""
 
@@ -56,9 +126,15 @@ If the user describes a problem, suggest sending a photo or typing /diagnose so 
 Never recommend specific pesticide products or doses. For pets or children eating a plant, suggest a vet or poison-control line.
 If it is not about plants, say you only help with plants.
 Start with ONE plain sentence that directly answers the question, alone on the first line. Only if extra detail is genuinely useful, add a line containing only --- and then the detail; otherwise stop after the first sentence.
-If you do not know the answer or are not confident in it (a specific species, a rare problem, a recent or local fact), do not guess: reply with exactly one line, SEARCH: <short web search query>, and nothing else. Use it at most once and never for greetings or questions you can answer well."""
+You must NOT state plant-care facts from memory (watering amounts or schedules, light, soil, fertilizer, repotting, temperature, pests, toxicity or safety for pets or people, edibility).
+Answer such questions ONLY from the REFERENCES in the context, and cite the record you used as [rec_...]. Use a reference only if it directly answers the question; do not stretch a loosely related one.
+If no reference answers it, reply with exactly one line, SEARCH: <short web search query>, and nothing else.
+You may answer without a reference only about the photo's plant identity or health as already described in the context, or about what you told the user earlier in this chat.
+If the plant is not identified with high confidence, say which plant you are assuming, or ask which plant it is, before giving plant-specific advice."""
 
 WEB_ANSWER = """Web search results for the user's question are below. Answer using only these results, in the same style as before (one plain sentence, optionally --- and detail).
+Prefer results marked (trusted source). If none is trusted, say the answer comes from general gardening sites and is not an expert source.
+Answer for the user's plant if it is named in the search query; do not give a generic answer for "indoor plants" as if it were about this plant.
 Say which source you relied on by its site name. If the results do not answer the question, say you could not confirm it and suggest a local nursery or extension office. Never output SEARCH: again.
 Never recommend specific pesticide products or doses."""
 
@@ -76,8 +152,9 @@ def split_reply(reply):
         lines = head.splitlines()
         summary, detail = lines[0].strip(), ("\n".join(lines[1:]).strip() + "\n" + detail).strip()
         norm = lambda t: re.sub(r"[^a-z0-9]+", " ", t.lower()).strip()
-        if norm(detail).startswith(norm(summary)[:60]) and len(detail) < len(summary) * 1.5:
-            detail = ""                                    # the model just repeated the summary
+        if norm(detail).startswith(norm(summary)[:60]):
+            rest = re.sub(r"^\s*" + re.escape(summary.strip().rstrip(".")) + r"\.?\s*(?:-{3,}\s*)?", "", detail, count=1).strip()
+            detail = rest if len(norm(rest)) > 20 else ""   # the model repeated the summary: drop the repeat, keep anything new
         return f"{summary}\n---\n{detail}" if detail else summary
     plain = re.sub(r"[*_#>`]", "", reply)
     first = re.split(r"(?<=[.!?])\s", plain.strip().splitlines()[0] if plain.strip() else "", 1)[0][:200] if plain.strip() else ""
@@ -246,6 +323,33 @@ class Session:
         trace.context(self.segments, st.pop("limit"), st.pop("used"), **st, exact=all(c["exact"] for c in st["calls"][-1:]))
 
     def _observe(self, photo, text):
+        """Observation (symptoms, health) plus an independent, calibrated plant identification run alongside it."""
+        fut = None
+        if photo and not plant_from_text(text):
+            ctx = contextvars.copy_context()
+            fut = ThreadPoolExecutor(1).submit(ctx.run, self._identify, photo)
+        obs, dropped = self._observe_raw(photo, text)
+        return self._apply_identity(obs, text, fut.result() if fut else None), dropped
+
+    def _identify(self, photo):
+        with span("tool", "Identify plant (3 looks + other model families)") as a:
+            r = identify(self.vlm, photo)
+            a.update(name=r["name"], confidence=r["confidence"], agree=r.get("agree"), candidates=r["candidates"])
+            return r
+
+    def _apply_identity(self, obs, text, ident):
+        named = plant_from_text(text)
+        if named: plant = {"name": named, "confidence": "high", "source": "user"}
+        elif ident: plant = {"name": ident["name"] or "unknown", "confidence": ident["confidence"], "candidates": ident["candidates"],
+                             "agree": ident.get("agree"), "subject_clear": ident.get("subject_clear", True)}
+        else: return obs
+        raw = {k: v for k, v in obs.items() if not k.startswith("_")}
+        raw["plant"] = plant
+        out, _ = clean_observation(raw)
+        out["_dropped_symptoms"] = obs.get("_dropped_symptoms", [])
+        return out
+
+    def _observe_raw(self, photo, text):
         ask = ("Output ONLY the observation JSON described in the skill. Use only symptom, location and plant_part ids from the "
                "symptom reference. Describe what is visible; do not guess.")
         content = ([{"type": "image_path", "path": photo}] if photo else []) + [{"type": "text", "text": (text or "") + "\n\n" + ask}]
@@ -530,6 +634,24 @@ class Session:
         self.segments = [{"key": k, "label": l, "tokens": t} for k, l, t in self.segments]
         self._publish()
 
+    def _supported(self, answer, recs):
+        """Does the cited reference text actually say what the answer says? Numbers are checked in code, wording by a second model call."""
+        with span("tool", "Check answer against its references") as a:
+            bad = numbers_unsupported(answer, recs)
+            if bad:
+                a.update(unsupported_numbers=bad); return False
+            body = "\n".join(f"[{r['record_id']}] {r['summary']} Advice: {'; '.join(r['next_actions'] + r['inspect_next'])} {r.get('caveats') or ''}" for r in recs)
+            ask = ("REFERENCES:\n" + body + "\n\nANSWER:\n" + re.sub(r"\[rec_\d+\]", "", answer)
+                   + '\n\nList every factual claim in the ANSWER that the REFERENCES do not state (even if it is true in general). '
+                     'Output ONLY JSON: {"unsupported": ["claim", ...]}. Use an empty list only if every claim is stated in the references.')
+            try:
+                d = parse_json(self.vlm.chat([{"role": "user", "content": ask}], 250, 0.0, "Check answer against references"))
+            except Exception:
+                return False                    # cannot verify: do not trust it
+            un = (d or {}).get("unsupported") if isinstance(d, dict) else None
+            a.update(unsupported=un)
+            return un == []
+
     def _general(self, text, photo, extra_context):
         """Plain answer to a care question. No skill format, no causes, no checklist unless the user asks."""
         if photo and self.observation is None:
@@ -548,23 +670,56 @@ class Session:
             earlier = "Earlier you told the user: " + self.history[-1]["content"][:1200]
             ctx.append(earlier)
         if extra_context: ctx.append("Saved plant context: " + extra_context)
+        plant = ((o or {}).get("_retrieval") or {}).get("plant") or {"id": None, "confidence": "unknown"}
+        if o: ctx.append(f"Plant identity: {plant_line(o.get('plant'))}.")
+        with span("retrieval", "KB references for the question") as a:
+            refkb = retrieve({"plant": plant, "plant_parts": [], "symptoms": [], "location_patterns": [], "description": text})
+            a.update(coverage=refkb["coverage"], results=len(refkb["results"]), top=[r["record"]["record_id"] for r in refkb["results"]])
+        refs = [{"record_id": r["record"]["record_id"], "about": r["record"]["cause"], "summary": r["record"]["summary"],
+                 "advice": r["record"]["next_actions"] + r["record"]["inspect_next"], "caveats": r["record"]["caveats"]} for r in refkb["results"]]
+        rag = json.dumps(refs)
+        ctx.append("REFERENCES (knowledge base; cite as [rec_...]; use one only if it directly answers the question):\n" + (rag if refs else "none matched this question"))
         msgs = [{"role": "system", "content": GENERAL}, {"role": "user", "content": "CONTEXT (do not repeat it):\n" + "\n".join(ctx or ["No photo yet."])}]
         prior = [] if self.graph else self.qa_history[-6:]
         msgs += prior + [{"role": "user", "content": text}]
         reply = self.vlm.chat(msgs, 450, 0.3, "Answer plant question")
         query = parse_search_request(reply)
+        known = {r["record_id"] for r in refs}
+        cited = [c for c in dict.fromkeys(re.findall(r"\[(rec_\d+)\]", reply)) if c in known]
+        if not query and not cited and CARE_FACT.search(text or ""):
+            with span("tool", "Discarded uncited care answer", draft=reply[:160]):   # a care or safety fact with no reference is not trusted
+                query = search_query(text, o)
+                reply = f"SEARCH: {query}"
+        elif not query and cited:
+            used_recs = [r["record"] for r in refkb["results"] if r["record"]["record_id"] in cited]
+            if not self._supported(reply, used_recs):          # cited a record that does not actually say this
+                with span("tool", "Discarded answer its references do not support", draft=reply[:160]):
+                    query = search_query(text, o)
+                    reply = f"SEARCH: {query}"
         if query:                                         # the model said it does not know: search the web once, then answer from the results
             with span("tool", "Web search", query=query) as a:
-                results = web_search(query)
+                results = rank_results(web_search(query))
                 a.update(results=len(results), urls=[r["url"] for r in results])
             found_web = format_results(results) if results else "(no results; the search failed or found nothing)"
             msgs += [{"role": "assistant", "content": reply}, {"role": "user", "content": f"{WEB_ANSWER}\n\nSEARCH QUERY: {query}\n\nRESULTS:\n{found_web}"}]
             reply = self.vlm.chat(msgs, 450, 0.3, "Answer with web results")
             if parse_search_request(reply): reply = "I could not confirm that. A local nursery or extension office can help."
         reply = split_reply(reply)
+        head0, sep0, rest0 = reply.partition("\n---\n")
+        reply = re.sub(r"\s*\[\d+\]", "", head0) + sep0 + rest0
         if query and results:                             # sources go in the expandable detail, not the one-line summary
+            reply = re.sub(r"\n?\*{0,2}Sources:?\*{0,2}.*", "", reply, flags=re.I).rstrip()     # drop any sources line the model wrote itself
             reply += ("\n" if "\n---\n" in reply else "\n---\n") + "**Sources:** " + ", ".join(r["url"] for r in results[:3])
-        self._record_context(GENERAL, found, "", earlier + " ".join(m["content"] for m in prior if m["role"] == "assistant"),
+        elif not query:
+            reply = re.sub(r"\[(rec_\d+)\]", lambda m: m.group(0) if m.group(1) in known else "", reply)
+            used = [r["record"] for r in refkb["results"] if r["record"]["record_id"] in cited]
+            if used:
+                head, sep, rest = reply.partition("\n---\n")
+                head = re.sub(r"\s*\[rec_\d+\]", "", head).strip()                 # citations live in the detail, not the summary line
+                reply = head + "\n---\n" + ((rest + "\n") if rest else "") + "**Sources:** " + ", ".join(dict.fromkeys(r["source_url"] for r in used)) \
+                        + "\n**Based on:** " + "; ".join(f"{r['cause']} [{r['record_id']}]" for r in used)
+                emit_rag(refkb, set(cited), "answer")
+        self._record_context(GENERAL, found, rag, earlier + " ".join(m["content"] for m in prior if m["role"] == "assistant"),
                              " ".join(m["content"] for m in prior if m["role"] == "user") + " " + text, extra_context, False, facts)
         if not self.graph: self.qa_history += [{"role": "user", "content": text}, {"role": "assistant", "content": reply}]
         self.last = {"intent": "question", "stage": self.last.get("stage"), "kb": self.last.get("kb", {"results": []}), "observation": o, "reply": reply}
@@ -590,7 +745,9 @@ class Session:
                              "suggested_questions": kb["questions"]}, indent=1)
                + (f"\n\nPLANT CONTEXT (from the user's saved profile and history; not a source of causes):\n{extra_context}" if extra_context else "")
                + (f"\n\nCONVERSATION MEMORY (retrieved from earlier in this chat; the user's own statements and what you advised):\n{facts}" if gm else "")
-               + "\n\nOBSERVATION:\n" + json.dumps({k: v for k, v in self.observation.items() if not k.startswith("_")})
+               + "\n\nOBSERVATION:\n" + json.dumps({**{k: v for k, v in self.observation.items() if not k.startswith("_")}, "plant": plant_line(self.observation.get("plant"))})
+               + f"\n\nPLANT IDENTITY: {plant_line(self.observation.get('plant'))}. Name the plant exactly this way. Confirmed = say the name; 'looks like' = offer it as a guess "
+                 "and let the user confirm; could not tell = say so and list the maybes. Never use a guessed name as fact in the advice."
                + f"\n\nSECTIONS YOU MAY WRITE THIS TURN: {allowed_sections(self.observation, kb['coverage'], not first)}.\nTreat as fact only what the photo shows or the user wrote; never state that the user said something they did not.\n{FORMAT}")
         content = ([{"type": "image_path", "path": photo}] if first and photo else []) + [{"type": "text", "text": (text or "Here is my plant.") + "\n\n" + ctx}]
         if gm: convo = [{"role": "user", "content": content}]
@@ -603,6 +760,14 @@ class Session:
             with span("tool", "Ground reply in KB records") as a:
                 reply = ground_reply(reply, kb, report)
                 a.update(report)
+        note = uncertainty_note(self.observation, kb) if (self.observation.get("health") != "healthy" and self.observation.get("image_quality") != "poor") else None
+        if note and note["reasons"]:
+            block = uncertainty_text(note)
+            if block:
+                reply = reply.rstrip() + ("\n---\n" if "\n---\n" not in reply else "\n") + block
+                if "causes" in note["reasons"] and not re.search(r"\b(not (?:sure|certain)|may|might|could|possibl|likely)\b", reply.split("\n---\n")[0], re.I):
+                    head, sep, rest = reply.partition("\n---\n")
+                    reply = head.rstrip(".") + " (not certain: several causes look alike)." + sep + rest
         sent = {"records": records, "suggested_questions": kb["questions"]}
         self._record_context(SYSTEM + "\n" + FORMAT + allowed_sections(self.observation, kb["coverage"], not first),
                              {k: v for k, v in self.observation.items() if not k.startswith("_")}, sent,

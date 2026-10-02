@@ -1,18 +1,22 @@
 import { useEffect, useState } from 'react'
 import { api } from './api.js'
 
-const today = () => new Date().toISOString().slice(0, 10)
-const inDays = (n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10)
+// local calendar dates: toISOString() is UTC, which is already "tomorrow" in the evening west of Greenwich
+const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const today = () => ymd(new Date())
+const inDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return ymd(d) }
 
 export function Profile({ plant, refresh }) {
-  const [p, setP] = useState({})
-  useEffect(() => { try { setP(JSON.parse(plant.profile || '{}')) } catch { setP({}) } }, [plant.id])
+  const [p, setP] = useState({}); const [saved, setSaved] = useState('')
+  // reload when the saved profile changes (e.g. the weather check fills in location), not only when switching plants; otherwise Save would overwrite it with stale values
+  useEffect(() => { try { setP(JSON.parse(plant.profile || '{}')) } catch { setP({}) } }, [plant.id, plant.profile])
+  const save = () => api.setProfile(plant.id, p).then(refresh).then(() => { setSaved('Saved ✓'); setTimeout(() => setSaved(''), 2000) }).catch(() => setSaved('Could not save'))
   const fields = ['species', 'light', 'watering', 'location', 'soil', 'recent changes', 'temperature', 'humidity', 'indoor/outdoor', 'recent weather']
   return (
     <>
       <h3>About {plant.name}</h3><p>The more I know, the better my advice.</p>
       {fields.map((f) => <label key={f}>{f}<input value={p[f] || ''} onChange={(e) => setP({ ...p, [f]: e.target.value })} /></label>)}
-      <button className="primary" onClick={() => api.setProfile(plant.id, p).then(refresh)}>Save</button>
+      <button className="primary" onClick={save}>Save</button> <small>{saved}</small>
     </>
   )
 }
@@ -53,16 +57,18 @@ export function Progress({ plantId, version, onChange }) {
   const load = () => api.events(plantId).then(setEv)
   useEffect(() => { load() }, [plantId, version])
   const upd = (e, patch) => api.updateEvent(e.id, { ...e, ...patch }).then(() => { load(); onChange?.() })
+  const snooze = (e, days) => api.snooze(e.id, days).then(() => { load(); onChange?.() })
   const upcoming = ev.filter((e) => e.status === 'planned'); const done = ev.filter((e) => e.status !== 'planned').reverse()
   return (
     <>
       <h3>Progress</h3><p>Plan what to do, then record how it went.</p>
+      <Memory plantId={plantId} version={version} />
       <input placeholder="e.g. Repot into a bigger pot" value={title} onChange={(e) => setTitle(e.target.value)} />
       <input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
-      <button className="primary" onClick={() => title && api.addEvent(plantId, { title, due }).then(() => { setTitle(''); load(); onChange?.() })}>Add to plan</button>
+      <button className="primary" onClick={() => title && api.addEvent(plantId, { title, due, source: 'manual' }).then(() => { setTitle(''); load(); onChange?.() })}>Add to plan</button>
       <h3>Coming up</h3>
       {!upcoming.length && <p>Nothing planned.</p>}
-      {upcoming.map((e) => <EventRow key={e.id} e={e} onSave={(r) => upd(e, { status: 'done', result: r })} onSkip={() => upd(e, { status: 'skipped' })} onDel={() => api.delEvent(e.id).then(() => { load(); onChange?.() })} />)}
+      {upcoming.map((e) => <EventRow key={e.id} e={e} onSnooze={(d) => snooze(e, d)} onSave={(r) => upd(e, { status: 'done', result: r })} onSkip={() => upd(e, { status: 'skipped' })} onDel={() => api.delEvent(e.id).then(() => { load(); onChange?.() })} />)}
       <h3>What happened</h3>
       {!done.length && <p>Finished steps and their results show up here.</p>}
       {done.map((e) => <div key={e.id} className="card entry"><small>{(e.done_at || e.due || '').slice(0, 10)} · {e.status === 'done' ? '✅ Done' : '⏭️ Skipped'}</small><b>{e.title}</b>{e.result && <div>Result: {e.result}</div>}</div>)}
@@ -72,16 +78,35 @@ export function Progress({ plantId, version, onChange }) {
   )
 }
 
-function EventRow({ e, onSave, onSkip, onDel }) {
+function EventRow({ e, onSave, onSkip, onDel, onSnooze }) {
   const [res, setRes] = useState(''); const [open, setOpen] = useState(false)
   const overdue = e.due && e.due < today()
   return (
     <div className="card entry">
-      <small>{overdue ? '⏰ Overdue · ' : '🗓️ '}{e.due}</small><b>{e.title}</b>
+      <small>{overdue ? '⏰ Overdue · ' : e.due === today() ? '🔔 Due today · ' : '🗓️ '}{e.due}{e.kind === 'recheck' ? ' · 📷 follow-up' : ''}</small><b>{e.title}</b>
       {open
         ? <><input placeholder="How did it go?" value={res} onChange={(x) => setRes(x.target.value)} /><div className="chips"><button className="primary" onClick={() => onSave(res)}>Save result</button></div></>
-        : <div className="chips"><button onClick={() => setOpen(true)}>Mark done</button><button onClick={onSkip}>Skip</button><button onClick={onDel}>Delete</button></div>}
+        : <div className="chips"><button onClick={() => setOpen(true)}>Mark done</button><button onClick={() => onSnooze(1)}>Snooze 1d</button><button onClick={() => onSnooze(3)}>3d</button><button onClick={onSkip}>Skip</button><button onClick={onDel}>Delete</button></div>}
     </div>
+  )
+}
+
+// Structured memory: what I currently know about this plant, in one place.
+export function Memory({ plantId, version }) {
+  const [m, setM] = useState(null)
+  useEffect(() => { api.memory(plantId).then(setM).catch(() => setM(null)) }, [plantId, version])
+  if (!m) return null
+  const known = Object.entries(m.profile)
+  return (
+    <details className="card" open>
+      <summary><b>What I know about {m.plant.name}</b></summary>
+      {m.condition.checked
+        ? <p>Last check-up {m.condition.checked.slice(0, 10)}: {m.condition.symptoms.join(', ') || 'no clear symptoms'}{m.condition.possible_causes.length ? ` · possible: ${m.condition.possible_causes.join(', ')}` : ''}</p>
+        : <p>No check-up yet.</p>}
+      {known.length > 0 && <p><small>{known.map(([k, v]) => `${k}: ${v}`).join(' · ')}</small></p>}
+      {m.tried.length > 0 && <><b>Tried</b><ul>{m.tried.map((e, i) => <li key={i}>{e.title} — {e.status}{e.result ? `: ${e.result}` : ''}</li>)}</ul></>}
+      {m.next.length > 0 && <><b>Next</b><ul>{m.next.map((e, i) => <li key={i}>{e.title} — {e.due}</li>)}</ul></>}
+    </details>
   )
 }
 
@@ -89,7 +114,7 @@ export function Plan({ plantId, onAdded }) {
   const [r, setR] = useState(null)
   const add = async () => {
     const rows = [...r.today.map((t) => [t, today()]), ...r.next_days.map((t) => [t, inDays(3)]), ...r.next_week.map((t) => [t, inDays(7)])]
-    for (const [title, due] of rows) await api.addEvent(plantId, { title, due })
+    for (const [title, due] of rows) await api.addEvent(plantId, { title, due, source: 'manual' })
     onAdded?.()
   }
   const L = ({ t, a }) => <div className="card"><h4>{t}</h4><ul>{a.map((x) => <li key={x}>{x}</li>)}</ul></div>

@@ -2,6 +2,7 @@
 uploads, plants, profile, context meter. STUB: /api/compare, /api/plan, /api/why and /api/live return placeholder data."""
 from typing import List
 import asyncio, json, os, re, sys, threading, uuid
+from datetime import date, timedelta
 from pathlib import Path
 from starlette.concurrency import run_in_threadpool
 ROOT = Path(__file__).resolve().parents[1]
@@ -13,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import db
 
-from src.pipeline import Session, DIAGNOSE_COMMANDS, emit_rag, new_ledger, context_state
+from src.pipeline import Session, DIAGNOSE_COMMANDS, emit_rag, new_ledger, context_state, uncertainty_note, plant_line
 from src.remote_vlm import MODELS
 from src import trace
 from src.build_index import build as build_index, load_config
@@ -35,6 +36,7 @@ app = FastAPI(title="PlantLens")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/uploads", StaticFiles(directory=UPLOADS), name="uploads")
 db.init()
+import reminders, reminder_agent; app.include_router(reminders.router)   # Apple Reminders bridge (backend/reminders.py)
 
 
 def load_trace(tid):
@@ -83,7 +85,8 @@ def plants():
       (SELECT image FROM entries WHERE plant_id=p.id AND image IS NOT NULL ORDER BY id DESC LIMIT 1) AS last_image,
       (SELECT text FROM entries WHERE plant_id=p.id AND kind='diagnosis' ORDER BY id DESC LIMIT 1) AS last_diagnosis,
       (SELECT COUNT(*) FROM entries WHERE plant_id=p.id AND kind='diagnosis') AS diagnoses,
-      (SELECT COUNT(*) FROM events WHERE plant_id=p.id AND status='planned') AS open_events
+      (SELECT COUNT(*) FROM events WHERE plant_id=p.id AND status='planned') AS open_events,
+      (SELECT COUNT(*) FROM events WHERE plant_id=p.id AND status='planned' AND due<date('now','localtime')) AS overdue_events
       FROM plants p ORDER BY id""")
 
 
@@ -128,19 +131,23 @@ def events(pid: int): return db.rows("SELECT * FROM events WHERE plant_id=? ORDE
 @app.post("/api/plants/{pid}/events")
 def add_event(pid: int, body: dict, x_trace_id: str = Header("")):
     with trace.use(x_trace_id, create=False), trace.span("event", "Scheduled event: added", title=body.get("title", ""), due=body.get("due")):
-        eid = db.run("INSERT INTO events(plant_id,title,due,status,result) VALUES(?,?,?,?,?)",
-                     (pid, body.get("title", ""), body.get("due"), body.get("status", "planned"), body.get("result", "")))
+        eid = db.run("INSERT INTO events(plant_id,title,due,status,result,kind,source) VALUES(?,?,?,?,?,?,?)",
+                     (pid, body.get("title", ""), body.get("due"), body.get("status", "planned"), body.get("result", ""),
+                      body.get("kind", "care"), body.get("source", "manual")))
     save_trace(x_trace_id)
     return {"id": eid}
 
 
 @app.put("/api/events/{eid}")
 def update_event(eid: int, body: dict, x_trace_id: str = Header("")):
-    st = body.get("status", "planned")
-    with trace.use(x_trace_id, create=False), trace.span("event", f"Scheduled event: {st}", title=body.get("title"), result=body.get("result", "")):
+    old = (db.rows("SELECT status,result FROM events WHERE id=?", (eid,)) or [None])[0]
+    if not old: raise HTTPException(404, "no such event")
+    st = body.get("status") or old["status"]
+    result = body["result"] if body.get("result") is not None else old["result"]     # a snooze / skip must not wipe a saved result
+    with trace.use(x_trace_id, create=False), trace.span("event", f"Scheduled event: {st}", title=body.get("title"), result=result):
         db.run("UPDATE events SET title=COALESCE(?,title), due=COALESCE(?,due), status=?, result=?, "
-               "done_at=CASE WHEN ?!='planned' THEN CURRENT_TIMESTAMP END WHERE id=?",
-               (body.get("title"), body.get("due"), st, body.get("result", ""), st, eid))
+               "done_at=CASE WHEN ?='planned' THEN NULL WHEN done_at IS NULL THEN CURRENT_TIMESTAMP ELSE done_at END WHERE id=?",
+               (body.get("title"), body.get("due"), st, result, st, eid))
     save_trace(x_trace_id)
     return {"ok": True}
 
@@ -153,6 +160,66 @@ def del_event(eid: int, x_trace_id: str = Header("")):
     return {"ok": True}
 
 
+# ---------- follow-up scheduler ----------
+RECHECK_DAYS = {"red": 1, "yellow": 2, "green": 7}        # how soon to look at the plant again, by urgency
+
+
+def schedule_recheck(plant_id, urgency, source="checkup"):
+    """After a check-up, keep exactly one open 'recheck' follow-up per plant, re-timed to the latest urgency."""
+    due = (date.today() + timedelta(days=RECHECK_DAYS.get(urgency, 2))).isoformat()
+    title = "Re-check with a new photo" if urgency != "green" else "Routine health check"
+    open_ = db.rows("SELECT id FROM events WHERE plant_id=? AND kind='recheck' AND status='planned' ORDER BY id DESC", (plant_id,))
+    if open_:
+        db.run("UPDATE events SET title=?, due=?, source=? WHERE id=?", (title, due, source, open_[0]["id"]))
+        return open_[0]["id"]
+    return db.run("INSERT INTO events(plant_id,title,due,kind,source) VALUES(?,?,?,'recheck',?)", (plant_id, title, due, source))
+
+
+@app.get("/api/followups")
+def followups(days: int = 0):
+    """Open follow-ups across all plants that are due within `days` days (0 = today or overdue), most overdue first."""
+    horizon = (date.today() + timedelta(days=days)).isoformat()
+    return db.rows("SELECT e.*, p.name AS plant_name FROM events e JOIN plants p ON p.id=e.plant_id "
+                   "WHERE e.status='planned' AND e.due IS NOT NULL AND e.due<=? ORDER BY e.due, e.id", (horizon,))
+
+
+@app.post("/api/events/{eid}/snooze")
+def snooze_event(eid: int, body: dict, x_trace_id: str = Header("")):
+    r = db.rows("SELECT due FROM events WHERE id=? AND status='planned'", (eid,))
+    if not r: raise HTTPException(404, "no open event")
+    base = max(date.today(), date.fromisoformat(r[0]["due"][:10])) if r[0]["due"] else date.today()
+    due = (base + timedelta(days=max(1, int(body.get("days", 1))))).isoformat()
+    with trace.use(x_trace_id, create=False), trace.span("event", "Scheduled event: snoozed", id=eid, due=due):
+        db.run("UPDATE events SET due=? WHERE id=?", (due, eid))
+    save_trace(x_trace_id)
+    return {"due": due}
+
+
+# ---------- structured plant memory ----------
+def plant_memory(pid):
+    """One structured record per plant: care profile, current condition (from the latest check-up), what was tried and how it went, what is next."""
+    plant = (db.rows("SELECT * FROM plants WHERE id=?", (pid,)) or [None])[0]
+    if not plant: return None
+    try: profile = {k: v for k, v in json.loads(plant["profile"] or "{}").items() if v}
+    except ValueError: profile = {}
+    last = db.rows("SELECT analysis,created FROM entries WHERE plant_id=? AND kind='check-up' ORDER BY id DESC LIMIT 1", (pid,))
+    a = json.loads(last[0]["analysis"]) if last and last[0]["analysis"] else {}
+    ev = db.rows("SELECT title,due,status,result,kind,done_at FROM events WHERE plant_id=? ORDER BY COALESCE(done_at,due,created) DESC", (pid,))
+    return {"plant": {"id": pid, "name": plant["name"], "species": plant["species"] or profile.get("species", "")},
+            "status": plant["status"], "profile": profile,
+            "condition": {"checked": last[0]["created"] if last else None, "symptoms": a.get("symptoms", []),
+                          "possible_causes": [p["cause"] for p in a.get("possibilities", [])]},
+            "tried": [e for e in ev if e["status"] != "planned"][:8],
+            "next": sorted((e for e in ev if e["status"] == "planned"), key=lambda e: e["due"] or "9999")}
+
+
+@app.get("/api/plants/{pid}/memory")
+def get_memory(pid: int):
+    m = plant_memory(pid)
+    if not m: raise HTTPException(404, "no such plant")
+    return m
+
+
 @app.post("/api/plants")
 def add_plant(p: PlantIn):
     return {"id": db.run("INSERT INTO plants(name,species) VALUES(?,?)", (p.name, p.species))}
@@ -160,7 +227,7 @@ def add_plant(p: PlantIn):
 
 @app.put("/api/plants/{pid}/profile")
 def set_profile(pid: int, profile: dict):
-    db.run("UPDATE plants SET profile=? WHERE id=?", (json.dumps(profile), pid))
+    db.run("UPDATE plants SET profile=?, species=COALESCE(NULLIF(?,''),species) WHERE id=?", (json.dumps(profile), (profile.get("species") or "").strip(), pid))   # species is shown / prompted from plants.species
     return {"ok": True}
 
 
@@ -210,8 +277,12 @@ def plant_context(plant_id):
     """The saved plant profile and the last journal entries, as text for the prompt."""
     plant = (db.rows("SELECT * FROM plants WHERE id=?", (plant_id,)) or [{}])[0]
     hist = db.rows("SELECT kind,text,created FROM entries WHERE plant_id=? ORDER BY id DESC LIMIT 5", (plant_id,))
+    mem = plant_memory(plant_id) or {}
+    tried = "; ".join(f"{e['title']} ({e['status']}{': ' + e['result'] if e['result'] else ''})" for e in mem.get("tried", [])[:5])
+    nxt = "; ".join(f"{e['title']} (due {e['due']})" for e in mem.get("next", [])[:5])
     return {"profile": f"Plant: {plant.get('name')} ({plant.get('species')}). Care profile: {plant.get('profile') or '{}'}",
-            "history": "\n".join(f"[{h['created']}] {h['kind']}: {h['text']}" for h in hist)}
+            "history": "\n".join(f"[{h['created']}] {h['kind']}: {h['text']}" for h in hist)
+                       + (f"\nActions already tried: {tried}" if tried else "") + (f"\nScheduled follow-ups: {nxt}" if nxt else "")}
 
 
 @app.post("/api/context")
@@ -285,7 +356,10 @@ def analysis_from(obs, kb, regions=()):
             if x not in steps: steps.append(x)
     plant = obs.get("plant") or {}
     unsure = []
-    if plant.get("confidence") != "high": unsure.append(f"I'm {plant.get('confidence', 'not')} sure this is {plant.get('name', 'that plant')}; please confirm the plant.")
+    note = uncertainty_note(obs, kb)
+    if plant.get("confidence") != "high": unsure.append(f"I {plant_line(plant)}; confirming the plant will sharpen the advice.")
+    if "several_plants" in note["reasons"]: unsure.append("The photo shows more than one plant, so I'm describing the most prominent one.")
+    if not healthy and "causes" in note["reasons"] and note["evidence"]: unsure.append(f"These causes look alike from a photo. Most useful next evidence: {note['evidence'].rstrip('.?')}.")
     if not healthy and not syms: unsure.append("I can't see a clear symptom in this photo. A closer, well-lit photo of the part that looks wrong would help.")
     elif kb["coverage"] != "good" and not healthy: unsure.append("My knowledge base only partly covers this, so treat these as possibilities." if kb["coverage"] == "weak" else "My knowledge base does not cover this case, so I won't list causes.")
     return {
@@ -324,6 +398,11 @@ async def analyze(body: dict):
                 if kb["results"]: emit_rag(kb, {p["record_id"] for p in card["possibilities"]}, "analysis")
                 save_message(cid, "assistant", "", image, card)
                 db.run("UPDATE plants SET status=? WHERE id=?", (card["urgency"], plant_id))
+                card["followup"] = {"id": schedule_recheck(plant_id, card["urgency"]), "days": RECHECK_DAYS[card["urgency"]]}
+                try:
+                    fu = db.rows("SELECT title,due FROM events WHERE id=?", (card["followup"]["id"],))[0]
+                    card["followup"]["apple"] = await run_in_threadpool(reminder_agent.sync_followup, plant_id, fu["title"], fu["due"])
+                except Exception: pass
                 pl = card.get("plant") or {}
                 summary = (f"Check-up: {pl.get('name', 'plant')} ({pl.get('confidence', '?')} confidence), status {card['urgency']}. "
                            f"Symptoms: {', '.join(card['symptoms']) or 'none seen'}. "
@@ -352,6 +431,8 @@ async def chat(req: ChatIn):
     parts = sess.frozen
     extra = "\n".join(x for x in (parts["profile"], parts["history"], MODE_HINT.get(req.mode, "")) if x)
 
+    made = {}
+
     def run():
         with trace.use(tid), trace.span("turn", "Chat turn", mode=req.mode):
             s = sess
@@ -365,6 +446,8 @@ async def chat(req: ChatIn):
                                                                           "coverage": kb.get("coverage")})))
             save_message(cid, "assistant", reply)
             save_state(cid, s)
+            try: made["reminders"] = reminder_agent.process_reply(req.plant_id, m.get("content", ""), reply)   # the model's schedule_reminders tool call
+            except Exception: pass                                   # reminders are a bonus: never fail the chat turn
             return reply
 
     async def stream():
@@ -385,6 +468,7 @@ async def chat(req: ChatIn):
                 yield json.dumps({"type": "error", "text": f"Model call failed: {e}"}) + "\n"
                 return
             yield json.dumps({"type": "token", "text": reply}) + "\n"
+            if made.get("reminders"): yield json.dumps({"type": "reminders", **made["reminders"]}) + "\n"
             yield json.dumps({"type": "done", "trace_id": tid}) + "\n"
         finally:
             unsub(); save_trace(tid)

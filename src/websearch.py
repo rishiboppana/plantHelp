@@ -80,8 +80,26 @@ def parse_search_request(reply):
     return q[:150] or None
 
 
+TRUSTED = (".edu", ".gov", "extension.", "aspca.org", "rhs.org.uk", "missouribotanicalgarden.org", "wikipedia.org", "ucanr.edu", "gardeningknowhow.com")
+
+
+def is_trusted(url):
+    host = urllib.parse.urlparse(url).netloc.lower()
+    return any(t in host for t in TRUSTED)
+
+
+SKIP = ("youtube.com", "youtu.be", "reddit.com", "facebook.com", "pinterest.", "tiktok.com", "instagram.com", "quora.com")
+
+
+def rank_results(results):
+    """Drop social and video pages; put extension services, botanical gardens and the ASPCA first."""
+    keep = [r for r in results if not any(x in urllib.parse.urlparse(r["url"]).netloc.lower() for x in SKIP)] or results
+    return sorted(keep, key=lambda r: not is_trusted(r["url"]))
+
+
 def format_results(results):
-    return "\n".join(f"[{i}] {r['title']} ({r['url']})\n    {r['snippet']}" for i, r in enumerate(results, 1))
+    results = sorted(results, key=lambda r: not is_trusted(r["url"]))        # extension services, botanical gardens and the ASPCA first
+    return "\n".join(f"[{i}] {r['title']} ({r['url']}){' (trusted source)' if is_trusted(r['url']) else ''}\n    {r['snippet']}" for i, r in enumerate(results, 1))
 
 
 if __name__ == "__main__":

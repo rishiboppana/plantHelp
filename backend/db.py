@@ -34,6 +34,9 @@ def init():
         """)
         if "renamed" not in [r[1] for r in c.execute("PRAGMA table_info(conversations)")]:
             c.execute("ALTER TABLE conversations ADD COLUMN renamed INTEGER DEFAULT 0")  # user-set titles are never auto-overwritten
+        ev_cols = [r[1] for r in c.execute("PRAGMA table_info(events)")]
+        for col, ddl in (("kind", "TEXT DEFAULT 'care'"), ("source", "TEXT DEFAULT 'manual'")):   # scheduler: recheck|care, manual|checkup|plan
+            if col not in ev_cols: c.execute(f"ALTER TABLE events ADD COLUMN {col} {ddl}")
         if not c.execute("SELECT 1 FROM plants").fetchone():
             c.execute("INSERT INTO plants(name,species) VALUES('My first plant','')")
 
