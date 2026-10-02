@@ -199,3 +199,9 @@ select.convs{max-width:200px}
 .grid.wide { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
 .fullcard .pinfo { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px 16px; }
 .fullcard .pinfo small { color: var(--dark); opacity: .8; }
+
+.dx { border: 1px solid #cfe3d0; border-left-width: 4px; background: #f4faf4; border-radius: 8px; padding: 8px 10px; margin: 8px 0; }
+.dx.confirmed { border-left-color: #2e8b57; }
+.dx.likely { border-left-color: #d4a017; }
+.dx.undetermined { border-left-color: #999; }
+@media (prefers-color-scheme: dark) { .dx { background: #1f2a21; border-color: #35503a; } }

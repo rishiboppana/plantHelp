@@ -10,6 +10,8 @@ from src.limits import context_limit
 from src.convgraph import ConvGraph, EXTRACT
 from src.retrieve import retrieve
 from src.identify import identify
+from src import diagnose
+from src.weather import lookup as weather_lookup, parse_weather_request
 from src.websearch import web_search, rank_results, parse_search_request, format_results
 from src import trace
 from src.guardrails import guard, REFUSE_IN, REFUSE_OUT
@@ -129,8 +131,15 @@ Start with ONE plain sentence that directly answers the question, alone on the f
 You must NOT state plant-care facts from memory (watering amounts or schedules, light, soil, fertilizer, repotting, temperature, pests, toxicity or safety for pets or people, edibility).
 Answer such questions ONLY from the REFERENCES in the context, and cite the record you used as [rec_...]. Use a reference only if it directly answers the question; do not stretch a loosely related one.
 If no reference answers it, reply with exactly one line, SEARCH: <short web search query>, and nothing else.
+If the question depends on the current, recent or coming weather where the plant lives (frost, heat, rain, whether to put it outside or water today), do not guess the weather: reply with exactly one line, WEATHER: <city>, and nothing else.
+Use the city the user named; otherwise leave it empty (WEATHER:) to use the saved plant location. If no location is saved and the user did not name a city, ask which city the plant is in instead.
 You may answer without a reference only about the photo's plant identity or health as already described in the context, or about what you told the user earlier in this chat.
 If the plant is not identified with high confidence, say which plant you are assuming, or ask which plant it is, before giving plant-specific advice."""
+
+WEATHER_ANSWER = """Weather data for the plant's location is below (past 14 days, next 7 days, local alerts). Answer the user's question from it, in the same style as before (one plain sentence, optionally --- and detail).
+Say which place the data is for. Mention frost, heat, rain or dry air ahead only as something that could affect the plant, and that the plant's setting (indoors or outdoors) changes how much it matters.
+Do not state watering amounts, schedules or temperature limits for the plant. If the data has an error, say you could not get the weather and ask for the city. Never output WEATHER: again.
+Do not recommend specific pesticide products or doses."""
 
 WEB_ANSWER = """Web search results for the user's question are below. Answer using only these results, in the same style as before (one plain sentence, optionally --- and detail).
 Prefer results marked (trusted source). If none is trusted, say the answer comes from general gardening sites and is not an expert source.
@@ -297,6 +306,8 @@ class Session:
         self.diag_turns = 0        # turns that ran the diagnosis skill
         self.photo = None
         self.regions = None        # cached symptom map; None = not computed yet
+        self.evidence = {}         # {distinguishing question: 'yes'|'no'} from the user's answers; drives the diagnosis status
+        self._on_token = None      # callback(text) for streaming the reply as it is written
         self.qa_history = []       # plain Q&A turns outside the diagnosis skill
         self.route_cache = {}
         self.lock = threading.RLock()   # analyze and chat may arrive together; observe only once
@@ -485,7 +496,7 @@ class Session:
         """JSON-safe snapshot so a conversation can resume after a restart without replaying model calls."""
         return {"observation": self.observation, "history": self.history, "qa_history": self.qa_history, "diag_turns": self.diag_turns,
                 "turns": self.turns, "photo": self.photo, "stage": self.last.get("stage"), "intent": self.last.get("intent"),
-                "regions": self.regions, "ledger": self.ledger, "segments": self.segments, "frozen": self.frozen,
+                "regions": self.regions, "evidence": self.evidence, "ledger": self.ledger, "segments": self.segments, "frozen": self.frozen,
                 "graph": self.graph.to_dict() if self.graph else None, "log": self.log}
 
     @classmethod
@@ -493,6 +504,7 @@ class Session:
         s = cls(vlm)
         s.observation, s.history, s.qa_history = st.get("observation"), st.get("history", []), st.get("qa_history", [])
         s.diag_turns, s.turns, s.photo = st.get("diag_turns", 0), st.get("turns", 0), st.get("photo")
+        s.evidence = st.get("evidence") or {}
         s.regions, s.segments, s.frozen = st.get("regions"), st.get("segments", []), st.get("frozen")
         s.graph, s.log = (ConvGraph.from_dict(st["graph"]) if st.get("graph") else None), st.get("log", [])
         s.ledger = {**new_ledger(), **(st.get("ledger") or {})}
@@ -505,6 +517,8 @@ class Session:
         low = text.lower()
         if skill == "diagnose" or low.startswith(DIAGNOSE_COMMANDS):
             return "diagnose"
+        if skill == "answer" and self.diag_turns > 0:      # the Yes/No buttons on the card
+            return "answer"
         if photo and not text:
             return "diagnose"
         awaiting = self.diag_turns > 0 and self.last.get("stage") in ("confirm_plant", "ask_questions", "need_closeup")
@@ -519,11 +533,12 @@ class Session:
                 self.route_cache[key] = intent
             return self.route_cache[key]
 
-    def turn(self, text="", photo=None, extra_context="", skill="", parts=None):
+    def turn(self, text="", photo=None, extra_context="", skill="", parts=None, on_token=None):
         """parts = {"profile": ..., "history": ...}: the pieces of extra_context, only used to label the context-window meter."""
         with span("wait", "Waiting for the session lock"): self.lock.acquire()
         try:
             self._parts = parts or {}
+            self._on_token = on_token
             ok, rail = guard.check_input(text)
             if not ok: return self._blocked(REFUSE_IN, "input", rail)
             reply = self._dispatch(text, photo, extra_context, skill)
@@ -532,7 +547,14 @@ class Session:
             self._after_turn(text, reply)
             return reply
         finally:
+            self._on_token = None
             self.lock.release()
+
+    def _write(self, msgs, max_tokens, temperature, label):
+        """The reply call: streamed to the user as it is written when a callback is set, otherwise a plain call."""
+        if self._on_token and hasattr(self.vlm, "stream_chat"):
+            return self.vlm.stream_chat(msgs, max_tokens, temperature, label, on_delta=self._on_token)
+        return self.vlm.chat(msgs, max_tokens, temperature, label)
 
     def _blocked(self, reply, where, rail):
         """A guardrail stopped this turn: show the refusal, and keep the blocked text out of the history, journal and memory graph."""
@@ -611,7 +633,7 @@ class Session:
         return self._general(text, photo, extra_context)
 
     def _reset(self):
-        self.observation, self.history, self.diag_turns, self.regions = None, [], 0, None
+        self.observation, self.history, self.diag_turns, self.regions, self.evidence = None, [], 0, None, {}
 
     @staticmethod
     def _user_text(m):
@@ -670,6 +692,8 @@ class Session:
             earlier = "Earlier you told the user: " + self.history[-1]["content"][:1200]
             ctx.append(earlier)
         if extra_context: ctx.append("Saved plant context: " + extra_context)
+        place0 = (getattr(self, "_parts", None) or {}).get("location", "")
+        ctx.append(f"Saved plant location: {place0 or 'none'}" + (f" ({self._parts['setting']})" if place0 and self._parts.get("setting") else ""))
         plant = ((o or {}).get("_retrieval") or {}).get("plant") or {"id": None, "confidence": "unknown"}
         if o: ctx.append(f"Plant identity: {plant_line(o.get('plant'))}.")
         with span("retrieval", "KB references for the question") as a:
@@ -683,10 +707,24 @@ class Session:
         prior = [] if self.graph else self.qa_history[-6:]
         msgs += prior + [{"role": "user", "content": text}]
         reply = self.vlm.chat(msgs, 450, 0.3, "Answer plant question")
+        wx, wx_ok = None, False
+        wx_place = parse_weather_request(reply)
+        if wx_place is not None:                          # the model needs the weather: look it up for the saved (or named) place, then answer from it
+            place = wx_place or place0
+            with span("tool", "Weather lookup", place=place or "(none saved)") as a:
+                try:
+                    wx = weather_lookup(place) if place else {"error": "No location is saved for this plant and the user did not name a city."}
+                except Exception as e:
+                    wx = {"error": f"weather lookup failed: {str(e)[:120]}"}
+                wx_ok = "error" not in wx
+                a.update(ok=wx_ok, resolved=wx.get("place"), alerts=len(wx.get("alerts", [])), error=wx.get("error"))
+            msgs += [{"role": "assistant", "content": reply}, {"role": "user", "content": f"{WEATHER_ANSWER}\n\nWEATHER DATA:\n{json.dumps(wx)}"}]
+            reply = self.vlm.chat(msgs, 450, 0.3, "Answer with weather")
+            if parse_weather_request(reply) is not None: reply = "I could not get the weather. Which city is your plant in?"
         query = parse_search_request(reply)
         known = {r["record_id"] for r in refs}
         cited = [c for c in dict.fromkeys(re.findall(r"\[(rec_\d+)\]", reply)) if c in known]
-        if not query and not cited and CARE_FACT.search(text or ""):
+        if not query and not cited and wx is None and CARE_FACT.search(text or ""):
             with span("tool", "Discarded uncited care answer", draft=reply[:160]):   # a care or safety fact with no reference is not trusted
                 query = search_query(text, o)
                 reply = f"SEARCH: {query}"
@@ -711,6 +749,9 @@ class Session:
             reply = re.sub(r"\n?\*{0,2}Sources:?\*{0,2}.*", "", reply, flags=re.I).rstrip()     # drop any sources line the model wrote itself
             reply += ("\n" if "\n---\n" in reply else "\n---\n") + "**Sources:** " + ", ".join(r["url"] for r in results[:3])
         elif not query:
+            if wx_ok:                                     # say where the weather came from (detail only)
+                reply += ("\n" if "\n---\n" in reply else "\n---\n") + f"**Weather:** Open-Meteo data for {wx['place']}" \
+                         + ("; " + ", ".join(x["url"] for x in wx["alerts"][:2]) if wx.get("alerts") else "")
             reply = re.sub(r"\[(rec_\d+)\]", lambda m: m.group(0) if m.group(1) in known else "", reply)
             used = [r["record"] for r in refkb["results"] if r["record"]["record_id"] in cited]
             if used:
@@ -736,6 +777,14 @@ class Session:
         prior = [] if gm else list(self.history)        # everything before this turn, for the context-window accounting
         facts = self._lookup(text) if gm else ""
         kb = self.search()
+        if text and not first and kb["results"]:        # the user's answers become evidence for or against each candidate cause
+            open_qs = list(dict.fromkeys(q["question"] for r in kb["results"] for q in r["record"]["distinguishing_questions"] if q["question"] not in self.evidence))
+            with span("tool", "Read answers to the questions") as a:
+                got = diagnose.extract_answers(self.vlm, text, open_qs)
+                self.evidence.update(got); a["answered"] = len(got)
+        with span("tool", "Weigh the candidate causes") as a:
+            dx = diagnose.assess(kb, self.evidence)
+            a.update(status=dx["status"], leading=(dx["leading"] or {}).get("cause"), ruled_out=dx["ruled_out"])
         records = [{"record_id": r["record"]["record_id"], "cause": r["record"]["cause"], "category": r["record"]["cause_category"],
                     "summary": r["record"]["summary"], "distinguishing_questions": [q["question"] for q in r["record"]["distinguishing_questions"]],
                     "next_actions": r["record"]["next_actions"], "inspect_next": r["record"]["inspect_next"],
@@ -748,11 +797,13 @@ class Session:
                + "\n\nOBSERVATION:\n" + json.dumps({**{k: v for k, v in self.observation.items() if not k.startswith("_")}, "plant": plant_line(self.observation.get("plant"))})
                + f"\n\nPLANT IDENTITY: {plant_line(self.observation.get('plant'))}. Name the plant exactly this way. Confirmed = say the name; 'looks like' = offer it as a guess "
                  "and let the user confirm; could not tell = say so and list the maybes. Never use a guessed name as fact in the advice."
+               + (f"\n\nDIAGNOSIS (decided by the app from the records and the user's answers): {dx['headline']} Status: {dx['status']}. The first line must state this "
+                  "diagnosis plainly with its status (confirmed / most likely / can't tell yet). Never sound more certain than the status." if dx["status"] != "none" and self.observation.get("health") != "healthy" else "")
                + f"\n\nSECTIONS YOU MAY WRITE THIS TURN: {allowed_sections(self.observation, kb['coverage'], not first)}.\nTreat as fact only what the photo shows or the user wrote; never state that the user said something they did not.\n{FORMAT}")
         content = ([{"type": "image_path", "path": photo}] if first and photo else []) + [{"type": "text", "text": (text or "Here is my plant.") + "\n\n" + ctx}]
         if gm: convo = [{"role": "user", "content": content}]
         else: self.history.append({"role": "user", "content": content}); convo = self.history
-        reply = split_reply(self.vlm.chat([{"role": "system", "content": SYSTEM}] + convo, 1000, 0.3, "Write reply"))
+        reply = split_reply(self._write([{"role": "system", "content": SYSTEM}] + convo, 1000, 0.3, "Write reply"))
         # keep only the plain user text in history for later turns (context block is rebuilt each turn)
         if not gm: self.history[-1] = {"role": "user", "content": content[:-1] + [{"type": "text", "text": text or "Here is my plant."}]}
         report = {}
@@ -761,6 +812,7 @@ class Session:
                 reply = ground_reply(reply, kb, report)
                 a.update(report)
         note = uncertainty_note(self.observation, kb) if (self.observation.get("health") != "healthy" and self.observation.get("image_quality") != "poor") else None
+        if note and dx["status"] == "confirmed": note["reasons"] = [x for x in note["reasons"] if x != "causes"]   # a confirmed case is not "several causes look alike"
         if note and note["reasons"]:
             block = uncertainty_text(note)
             if block:
@@ -777,12 +829,11 @@ class Session:
         if kb["results"]:
             cited = set(re.findall(r"\[(rec_\d+)\]", reply)) | set(report.get("used", []))
             emit_rag(kb, cited, "reply", report.get("used", []) if report.get("fallback") else [])
-        asks = [q["question"] for q in kb["questions"]] if first else []       # optional questions: written by code, from the records
-        if asks and self.observation.get("image_quality") != "poor" and self.observation.get("health") != "healthy":
-            reply = reply.rstrip() + ("\n---\n" if "\n---\n" not in reply else "\n") + \
-                    "**Optional questions** (answer any you like for a sharper answer):\n" + "\n".join(f"{i}. {q}" for i, q in enumerate(asks, 1))
+        shown = self.observation.get("image_quality") != "poor" and self.observation.get("health") != "healthy"
+        if shown and dx["status"] != "none":
+            reply = reply.rstrip() + ("\n---\n" if "\n---\n" not in reply else "\n") + diagnose.diagnosis_text(dx)   # verdict + the questions that would settle it: written by code
         if not gm: self.history.append({"role": "assistant", "content": reply})
-        self.last = {"observation": self.observation, "kb": kb, "reply": reply, "stage": self.stage(not first)}
+        self.last = {"observation": self.observation, "kb": kb, "reply": reply, "stage": self.stage(not first), "diagnosis": dx}
         return reply
 
 

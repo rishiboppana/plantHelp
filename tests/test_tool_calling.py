@@ -34,26 +34,46 @@ class FakeVLM:
     def labels(self): return [l for l, _ in self.calls]
 
 
-def run_turn(replies, text="", photo=None, kb=KB, results=RESULTS, skill=""):
-    """One turn with mocked tools. Returns (reply, fake model, kb_search mock, web_search mock)."""
+WX = {"place": "San Jose, California, United States", "past_14_days": {"temp_high_f": 88}, "next_7_days": {"temp_low_f": 41, "temp_high_f": 99},
+      "flags": [{"when": "coming", "kind": "cold"}], "daily_coming": [], "alerts": [{"title": "Heat advisory", "url": "https://wx.example/heat", "snippet": "Hot Friday"}]}
+SAVED = {"location": "San Jose, California", "setting": "outdoor"}
+
+
+def run_turn(replies, text="", photo=None, kb=KB, results=RESULTS, skill="", parts=None, weather=WX):
+    """One turn with mocked tools. Returns (reply, fake model, kb_search mock, web_search mock); the weather mock is run_turn.wx."""
     vlm = FakeVLM(replies)
-    with mock.patch("src.pipeline.retrieve", return_value=kb) as kbs, mock.patch("src.pipeline.web_search", return_value=results) as web:
-        reply = Session(vlm).turn(text, photo, skill=skill)
+    wx = mock.Mock(side_effect=weather) if isinstance(weather, Exception) else mock.Mock(return_value=weather)
+    with mock.patch("src.pipeline.retrieve", return_value=kb) as kbs, mock.patch("src.pipeline.web_search", return_value=results) as web, \
+         mock.patch("src.pipeline.weather_lookup", wx):
+        reply = Session(vlm).turn(text, photo, skill=skill, parts=parts)
+    run_turn.wx = wx
     return reply, vlm, kbs, web
 
 
 class QuestionPath(unittest.TestCase):
-    def test_confident_answer_calls_no_tool(self):
-        reply, vlm, kbs, web = run_turn({"Route message": "QUESTION", "Answer plant question": "Water when the top inch is dry."}, "how often do I water a pothos?")
-        web.assert_not_called(); kbs.assert_not_called()
+    def test_answer_from_a_reference_calls_no_web_search(self):
+        reply, vlm, kbs, web = run_turn({"Route message": "QUESTION", "Answer plant question": "Water when the soil is dry [rec_000001].",
+                                         "Check answer against references": '{"unsupported": []}'}, "how often do I water a pothos?")
+        web.assert_not_called(); kbs.assert_called_once()                 # the KB supplies the references
+        self.assertEqual(vlm.labels, ["Route message", "Answer plant question", "Check answer against references"])
+        run_turn.wx.assert_not_called()
+        self.assertIn("rec_000001", reply)
+
+    def test_uncited_care_answer_is_discarded_and_searched(self):
+        _, vlm, _, web = run_turn({"Route message": "QUESTION", "Answer plant question": "Water weekly.",
+                                   "Answer with web results": "Per example.org, check the soil first."}, "how often do I water a pothos?")
+        web.assert_called_once()
+        self.assertIn("Answer with web results", vlm.labels)
+
+    def test_chitchat_calls_no_tool(self):
+        reply, vlm, _, web = run_turn({"Route message": "QUESTION", "Answer plant question": "Glad to help!"}, "thanks, that helps")
+        web.assert_not_called(); run_turn.wx.assert_not_called()
         self.assertEqual(vlm.labels, ["Route message", "Answer plant question"])
-        self.assertEqual(reply, "Water when the top inch is dry.")
 
     def test_unknown_answer_triggers_one_web_search_and_a_grounded_answer(self):
         reply, vlm, kbs, web = run_turn({"Route message": "QUESTION", "Answer plant question": "SEARCH: calathea crispy edges",
                                          "Answer with web results": "Dry air is the usual cause, per example.org."}, "why are my calathea edges crispy?")
         web.assert_called_once_with("calathea crispy edges")
-        kbs.assert_not_called()                                           # the KB is for diagnosis, not for plain questions
         self.assertEqual(vlm.labels, ["Route message", "Answer plant question", "Answer with web results"])
         second = vlm.calls[-1][1][-1]["content"]
         self.assertIn("https://example.org/calathea", second)             # the results reached the model
@@ -76,6 +96,64 @@ class QuestionPath(unittest.TestCase):
 
     def test_general_prompt_offers_the_search_tool(self):
         self.assertIn("SEARCH:", pipeline.GENERAL)
+
+
+class WeatherAutoCall(unittest.TestCase):
+    Q = "should I bring my plant inside tonight?"
+
+    def test_model_requests_weather_and_the_saved_location_is_used(self):
+        reply, vlm, _, web = run_turn({"Route message": "QUESTION", "Answer plant question": "WEATHER:",
+                                       "Answer with weather": "Lows near 41F are coming, so it could be too cold outside."}, self.Q, parts=SAVED)
+        run_turn.wx.assert_called_once_with("San Jose, California")      # no manual city: the saved location
+        web.assert_not_called()                                           # the care-fact guard must not override a weather answer
+        self.assertEqual(vlm.labels, ["Route message", "Answer plant question", "Answer with weather"])
+        self.assertIn('"temp_low_f": 41', vlm.calls[-1][1][-1]["content"])  # the data reached the model
+        self.assertIn("Saved plant location: San Jose, California (outdoor)", vlm.calls[0 + 1][1][1]["content"])
+        self.assertIn("**Weather:** Open-Meteo data for San Jose", reply)
+        self.assertIn("https://wx.example/heat", reply)
+
+    def test_a_city_named_by_the_user_overrides_the_saved_one(self):
+        run_turn({"Route message": "QUESTION", "Answer plant question": "WEATHER: Fresno", "Answer with weather": "Hot in Fresno."},
+                 "will it freeze in Fresno this week?", parts=SAVED)
+        run_turn.wx.assert_called_once_with("Fresno")
+
+    def test_no_saved_location_means_no_lookup_and_the_model_is_told_to_ask(self):
+        reply, vlm, _, _ = run_turn({"Route message": "QUESTION", "Answer plant question": "WEATHER:",
+                                     "Answer with weather": "Which city is your plant in?"}, self.Q, parts={})
+        run_turn.wx.assert_not_called()
+        self.assertIn("No location is saved", vlm.calls[-1][1][-1]["content"])
+        self.assertNotIn("Open-Meteo", reply)
+
+    def test_not_requested_means_not_called(self):
+        run_turn({"Route message": "QUESTION", "Answer plant question": "Glad to help!"}, "thanks!", parts=SAVED)
+        run_turn.wx.assert_not_called()
+
+    def test_failed_lookup_is_reported_to_the_model_and_never_crashes(self):
+        for failure in (RuntimeError("network down"), {"error": "Couldn't find a place called 'Xyz'."}):
+            reply, vlm, _, _ = run_turn({"Route message": "QUESTION", "Answer plant question": "WEATHER: Xyz",
+                                         "Answer with weather": "I couldn't get the weather."}, self.Q, parts=SAVED, weather=failure)
+            self.assertIn('"error"', vlm.calls[-1][1][-1]["content"])
+            self.assertNotIn("Open-Meteo", reply)
+
+    def test_weather_is_requested_at_most_once(self):
+        reply, vlm, _, _ = run_turn({"Route message": "QUESTION", "Answer plant question": "WEATHER:", "Answer with weather": "WEATHER:"}, self.Q, parts=SAVED)
+        run_turn.wx.assert_called_once()
+        self.assertEqual(vlm.labels.count("Answer with weather"), 1)
+        self.assertIn("Which city", reply)
+
+    def test_weather_can_be_followed_by_a_web_search(self):
+        _, vlm, _, web = run_turn({"Route message": "QUESTION", "Answer plant question": "WEATHER:", "Answer with weather": "SEARCH: frost tolerance of jade plant",
+                                   "Answer with web results": "Per example.org, jade is frost tender."}, self.Q, parts=SAVED)
+        run_turn.wx.assert_called_once(); web.assert_called_once()
+        self.assertEqual(vlm.labels[-1], "Answer with web results")
+
+    def test_diagnosis_path_does_not_call_weather(self):
+        run_turn({"Look at the photo (observation)": json.dumps(OBS), "Verify symptoms (second look)": json.dumps({"yellowing": {"visible": "yes"}}),
+                  "Write reply": "Dry."}, "", "x.jpg", parts=SAVED)
+        run_turn.wx.assert_not_called()
+
+    def test_prompt_offers_the_weather_tool(self):
+        self.assertIn("WEATHER:", pipeline.GENERAL)
 
 
 class Routing(unittest.TestCase):
@@ -147,6 +225,31 @@ class SearchHelpers(unittest.TestCase):
              mock.patch("src.websearch._duckduckgo", return_value=[{"title": "t", "url": "u", "snippet": "s"}]):
             websearch.web_search("q")
             tv.assert_not_called()
+
+
+class WeatherLookup(unittest.TestCase):
+    DAY = {"time": "2026-10-01", "temperature_2m_min": 55.0, "temperature_2m_max": 75.0, "precipitation_sum": 0.0,
+           "relative_humidity_2m_mean": 50, "uv_index_max": 5, "wind_speed_10m_max": 8}
+
+    def test_parse_weather_request(self):
+        p = weather.parse_weather_request
+        self.assertEqual(p("WEATHER:"), "")
+        self.assertEqual(p("weather: San Jose, CA\nextra"), "San Jose, CA")
+        self.assertEqual(p('WEATHER: "Fresno"'), "Fresno")
+        self.assertIsNone(p("The weather is nice."))
+        self.assertIsNone(p("I will check WEATHER: later"))
+
+    def test_lookup_makes_no_model_call_and_returns_data(self):
+        with mock.patch("src.weather.geocode", return_value={"name": "San Jose", "region": "California", "country": "US", "lat": 1, "lon": 2}), \
+             mock.patch("src.weather.fetch", return_value=([self.DAY] * 14, [self.DAY] * 7)), mock.patch("src.weather.local_alerts", return_value=[]) as la:
+            out = weather.lookup("San Jose")
+        self.assertEqual(out["place"], "San Jose, California, US")
+        self.assertEqual(out["next_7_days"]["days"], 7); self.assertEqual(len(out["daily_coming"]), 7)
+        la.assert_called_once_with("San Jose, California, US")
+
+    def test_lookup_unknown_place_is_an_error_not_an_exception(self):
+        with mock.patch("src.weather.geocode", return_value=None):
+            self.assertIn("error", weather.lookup("Nowhereville"))
 
 
 class WeatherTool(unittest.TestCase):

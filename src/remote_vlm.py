@@ -53,8 +53,8 @@ class RemoteVLM:
         """Token usage of the most recent call on this thread: {prompt_tokens, completion_tokens, total_tokens, source}."""
         return getattr(self._tl, "usage", None)
 
-    def chat(self, messages, max_new_tokens=700, temperature=0.3, label="Model call"):
-        """messages: [{role, content: str | [{type:'text',text} | {type:'image_path',path} | {type:'image_url',url}]}]"""
+    def _prepare(self, messages):
+        """Wire format for the API plus the image count and a prompt-token estimate (used when the provider reports no usage)."""
         wire = []
         for m in messages:
             if isinstance(m["content"], str):
@@ -71,6 +71,67 @@ class RemoteVLM:
         images = sum(1 for m in messages if not isinstance(m["content"], str) for c in m["content"] if c["type"] != "text")
         est_prompt = sum(tok(m["content"] if isinstance(m["content"], str) else
                              " ".join(c.get("text", "") for c in m["content"] if c["type"] == "text")) for m in messages) + 576 * images
+        return wire, images, est_prompt
+
+    def _record_usage(self, a, model, label, u, out, est_prompt, tried):
+        pt, ct = u.get("prompt_tokens"), u.get("completion_tokens")
+        source = "provider" if pt is not None and ct is not None else "estimate"
+        pt, ct = (pt, ct) if source == "provider" else (est_prompt, tok(out))
+        limit, lsrc = context_limit(model, self.base_url, _SSL)
+        self._tl.usage = {"prompt_tokens": pt, "completion_tokens": ct, "total_tokens": pt + ct, "source": source,
+                          "model": model, "limit": limit, "limit_source": lsrc}
+        a.update(self._tl.usage, failed_providers=tried)
+        if self.on_usage: self.on_usage(label, self._tl.usage)
+
+    def stream_chat(self, messages, max_new_tokens=700, temperature=0.3, label="Model call", on_delta=None):
+        """Like chat(), but calls on_delta(text) for every piece of the reply as it arrives (server-sent events). Returns the full text.
+        Falls through to the next provider only while nothing has been emitted; a failure mid-stream raises."""
+        wire, images, est_prompt = self._prepare(messages)
+        err, tried, self._tl.usage = None, [], None
+        with span("model", label, max_tokens=max_new_tokens, images=images, streamed=True) as a:
+            for model in self.models:
+                body = {"model": model, "messages": wire, "max_tokens": max_new_tokens, "temperature": temperature,
+                        "stream": True, "stream_options": {"include_usage": True}}
+                req = urllib.request.Request(self.base_url + "/chat/completions", data=json.dumps(body).encode(),
+                                             headers={"Content-Type": "application/json", "Authorization": f"Bearer {self.token}", "User-Agent": "plantlens/0.1"})
+                out, usage, started = [], {}, False
+                try:
+                    with urllib.request.urlopen(req, timeout=self.timeout, context=_SSL) as r:
+                        if "event-stream" not in (r.headers.get("Content-Type") or ""):     # provider ignored stream=true: one JSON body
+                            data = json.load(r)
+                            text = data["choices"][0]["message"]["content"].strip()
+                            usage = data.get("usage") or {}
+                            if on_delta and text: on_delta(text)
+                            out = [text]
+                        else:
+                            for raw in r:
+                                line = raw.decode("utf-8", "replace").strip()
+                                if not line.startswith("data:"): continue
+                                chunk = line[5:].strip()
+                                if chunk == "[DONE]": break
+                                ev = json.loads(chunk)
+                                usage = ev.get("usage") or usage
+                                for ch in ev.get("choices") or []:
+                                    d = (ch.get("delta") or {}).get("content")
+                                    if d:
+                                        started = True; out.append(d)
+                                        if on_delta: on_delta(d)
+                    text = "".join(out).strip()
+                    self._record_usage(a, model, label, usage, text, est_prompt, tried)
+                    return text
+                except urllib.error.HTTPError as e:
+                    err = f"{model}: router returned {e.code}: {e.read().decode()[:200]}"
+                    tried.append({"model": model, "code": e.code})
+                    if e.code not in (429, 502, 503): break
+                except Exception as e:
+                    if started: raise                      # tokens already reached the user; cannot restart on another provider
+                    err = f"{model}: {e}"; tried.append({"model": model, "error": str(e)[:80]})
+            a["failed_providers"] = tried
+            raise RuntimeError(err) from None
+
+    def chat(self, messages, max_new_tokens=700, temperature=0.3, label="Model call"):
+        """messages: [{role, content: str | [{type:'text',text} | {type:'image_path',path} | {type:'image_url',url}]}]"""
+        wire, images, est_prompt = self._prepare(messages)
         err, tried, self._tl.usage = None, [], None
         with span("model", label, max_tokens=max_new_tokens, images=images) as a:
             for model in self.models:
@@ -81,15 +142,7 @@ class RemoteVLM:
                     with urllib.request.urlopen(req, timeout=self.timeout, context=_SSL) as r:
                         data = json.load(r)
                     out = data["choices"][0]["message"]["content"].strip()
-                    u = data.get("usage") or {}
-                    pt, ct = u.get("prompt_tokens"), u.get("completion_tokens")
-                    source = "provider" if pt is not None and ct is not None else "estimate"
-                    pt, ct = (pt, ct) if source == "provider" else (est_prompt, tok(out))
-                    limit, lsrc = context_limit(model, self.base_url, _SSL)
-                    self._tl.usage = {"prompt_tokens": pt, "completion_tokens": ct, "total_tokens": pt + ct, "source": source,
-                                      "model": model, "limit": limit, "limit_source": lsrc}
-                    a.update(self._tl.usage, failed_providers=tried)
-                    if self.on_usage: self.on_usage(label, self._tl.usage)
+                    self._record_usage(a, model, label, data.get("usage") or {}, out, est_prompt, tried)
                     return out
                 except urllib.error.HTTPError as e:
                     err = f"{model}: router returned {e.code}: {e.read().decode()[:200]}"

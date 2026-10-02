@@ -27,6 +27,14 @@ export default function AnalysisCard({ a, imageUrl, onAsk }) {
           )}
         </>
       )}
+      {a.diagnosis && <div className={`dx ${a.diagnosis.status}`}>
+        <b>{{ confirmed: '✅ Confirmed', likely: '🔎 Most likely', undetermined: '❔ Not sure yet' }[a.diagnosis.status]}</b> {a.diagnosis.headline}
+        {a.diagnosis.supporting?.length > 0 && <div><small>Supported by: {a.diagnosis.supporting.join('; ')}</small></div>}
+        {a.diagnosis.confirm?.length > 0 && <div><small>Tap to answer and confirm:</small>
+          {a.diagnosis.confirm.map((c) => <div key={c.question} className="chips"><span>{c.question}</span>
+            {['Yes', 'No'].map((v) => <button key={v} onClick={() => onAsk?.(`${v}. ${c.question.replace(/\?$/, '')}`, 'answer')}>{v}</button>)}</div>)}
+        </div>}
+      </div>}
       <div className="chips">{a.symptoms?.map((s) => <span key={s} className="chip">{s}</span>)}</div>
       {a.uncertainty && <p>🤔 {a.uncertainty}</p>}
       <h4>What to do next</h4>

@@ -37,6 +37,12 @@ The `src/` pipeline is an original model harness around open-weight models, not 
 - **Diagnosis:** the model reads the photo → each reported symptom is verified against the photo → local KB search (only if there is a problem) → the model writes the observation and 2-4 possible causes → the *code* appends next steps, sources and optional questions taken from the retrieved records.
 - Replies show one summary line; tap it for the full reasoning.
 
+## Diagnosis and confirmation (`src/diagnose.py`)
+The retrieved candidate causes are ranked in code, and the user's yes/no answers to each record's own distinguishing questions count as evidence for or against them (one small model call reads the answers). The status is **confirmed** (two or more supporting answers, none against, clear lead), **likely**, or **undetermined**. The reply's first line states that verdict, and the detail ends with what supports it, what is unlikely, and the specific questions that would settle it. The photo-check card shows the same verdict with Yes/No buttons.
+
+## Streaming
+`RemoteVLM.stream_chat` streams the diagnosis reply token by token (server-sent events, provider fallback only before the first token). When the reply is finished the app replaces the draft with the grounded version (steps and sources written from the records, verdict block). Replies that must be checked before being shown (care answers, refusals) arrive whole and are revealed progressively in the UI.
+
 ## Honest answers
 - **Plant identification** (`src/identify.py`): three independent looks from the main model plus one vote each from two other model families (Gemma, Llama). `high` only when every family agrees on a clear single subject; `medium` when a majority agree ("looks like X, could also be Y, please confirm"); `low` otherwise ("could not tell which plant this is", no invented names). A plant the user names is trusted. Alternatives that nobody agrees on are never shown.
 - **Uncertainty mode:** when the likely causes span several categories, or the plant is not confirmed, the reply says so and names the one extra piece of evidence that would help most.
@@ -45,8 +51,14 @@ The `src/` pipeline is an original model harness around open-weight models, not 
 ## Knowledge base (`kb/`)
 Vocabulary in `kb/vocab/` (the skill's `plantlens/references/symptoms.md` is generated from it: `python -m src.gen_skill_vocab`). Records are short paraphrased facts with a source URL; only `kb/records/reviewed/` is indexed. Validate with `python -m src.validate.validate`.
 
+## Progress, plan and why (`src/progress.py`)
+`/api/compare` (trend between two check-ups: resolved / new / persisting symptoms and urgency change, plus an optional one-line photo-vs-photo note), `/api/plan` (today / next days / next week from the latest check-up) and `/api/why` (ties each cause to the symptoms seen, its KB record and the saved plant profile). Trend, plan and explanation are computed in code from saved check-up cards; the model only adds the optional photo note. Buttons are under **Progress → Insights**.
+
+## Harness benchmark (`src/eval_harness.py`)
+Compares the full pipeline with a single plain call to the same open-weight model on labelled photos (health accuracy, symptom precision/recall/F1, false alarms on healthy plants, plant-ID accuracy). `python -m src.eval_harness --init` writes a label template to `kb/eval/photo_set.jsonl`; fill it in, then `python -m src.eval_harness --write-md` writes `kb/eval/HARNESS_RESULTS.md`.
+
 ## Tests
-`python -m unittest tests.test_pipeline tests.test_retrieve` (offline), `python -m src.eval_retrieval --misses` (retrieval metrics; results log in `kb/eval/RESULTS.md`).
+`python -m unittest tests.test_pipeline tests.test_retrieve tests.test_progress tests.test_eval_harness` (offline), `python -m src.eval_retrieval --misses` (retrieval metrics; results log in `kb/eval/RESULTS.md`).
 
 ## Known gaps
-`/api/compare`, `/api/plan`, `/api/live` are placeholders. Care answers outside a diagnosis come from the model, not the KB. The KB covers 29 generic houseplant problems from three extension sources whose licenses are not open (short paraphrases + URLs only).
+`/api/live` is a placeholder. Care answers outside a diagnosis come from the model, not the KB. The KB covers 29 generic houseplant problems from three extension sources whose licenses are not open (short paraphrases + URLs only).

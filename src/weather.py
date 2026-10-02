@@ -100,6 +100,28 @@ def assess(vlm, place, past, future, setting, plant_ctx, records, alerts=()):
     return split_reply(vlm.chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": msg}], 700, 0.3))
 
 
+WEATHER_PREFIX = "WEATHER:"
+
+
+def parse_weather_request(reply):
+    """If the model answered with 'WEATHER: <city>' (city may be empty = use the saved location), return the city string, else None."""
+    r = (reply or "").strip()
+    if not r.upper().startswith(WEATHER_PREFIX): return None
+    lines = r[len(WEATHER_PREFIX):].strip().splitlines()
+    return (lines[0].strip(" \"'`<>") if lines else "")[:100]
+
+
+def lookup(place):
+    """Weather facts for a place with no model call: past 14 days, next 7, cold flags, and local alerts. {'error': ...} if the place is unknown."""
+    loc = geocode(place)
+    if not loc: return {"error": f"Couldn't find a place called '{place}'."}
+    past, future = fetch(loc["lat"], loc["lon"])
+    label = ", ".join(x for x in (loc["name"], loc["region"], loc["country"]) if x)
+    day = lambda r: {k: r[k] for k in ("time", "temperature_2m_min", "temperature_2m_max", "precipitation_sum")}
+    return {"place": label, "past_14_days": stats(past), "next_7_days": stats(future), "flags": flags(past, future),
+            "daily_coming": [day(r) for r in future], "alerts": local_alerts(label)}
+
+
 def check(place, setting="", plant_ctx=None, vlm=None):
     loc = geocode(place)
     if not loc: return {"error": f"Couldn't find a place called '{place}'. Try 'City, State' or 'City, Country'."}

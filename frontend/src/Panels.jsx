@@ -53,7 +53,8 @@ export function Journal({ plantId, version }) {
 // Progress = everything that happened or is planned, with what came of it.
 export function Progress({ plantId, version, onChange }) {
   const [ev, setEv] = useState([]); const [title, setTitle] = useState(''); const [due, setDue] = useState(today())
-  const [cmp, setCmp] = useState(null)
+  const [ins, setIns] = useState({}); const [err, setErr] = useState('')
+  const run = (k, f) => { setErr(''); f().then((r) => r.detail ? setErr(r.detail) : setIns((p) => ({ ...p, [k]: r }))).catch(() => setErr('Something went wrong, try again.')) }
   const load = () => api.events(plantId).then(setEv)
   useEffect(() => { load() }, [plantId, version])
   const upd = (e, patch) => api.updateEvent(e.id, { ...e, ...patch }).then(() => { load(); onChange?.() })
@@ -72,8 +73,23 @@ export function Progress({ plantId, version, onChange }) {
       <h3>What happened</h3>
       {!done.length && <p>Finished steps and their results show up here.</p>}
       {done.map((e) => <div key={e.id} className="card entry"><small>{(e.done_at || e.due || '').slice(0, 10)} · {e.status === 'done' ? '✅ Done' : '⏭️ Skipped'}</small><b>{e.title}</b>{e.result && <div>Result: {e.result}</div>}</div>)}
-      <button onClick={() => api.compare({ plant_id: plantId }).then(setCmp)}>📈 Compare latest photos</button>
-      {cmp && <div className="card"><span className="badge">{cmp.trend}</span><p>{cmp.summary}</p>{cmp.stub && <div className="stub">sample data</div>}</div>}
+      <h3>Insights</h3>
+      <div className="chips">
+        <button onClick={() => run('cmp', () => api.compare({ plant_id: plantId, visual: true }))}>📈 Compare latest photos</button>
+        <button onClick={() => run('plan', () => api.plan({ plant_id: plantId }))}>🗓️ Recovery plan</button>
+        <button onClick={() => run('why', () => api.why({ plant_id: plantId }))}>❓ Why this advice?</button>
+      </div>
+      {err && <p>{err}</p>}
+      {ins.cmp && <div className="card">
+        <span className="badge">{ins.cmp.icon} {ins.cmp.trend}</span><p>{ins.cmp.summary}</p>
+        {ins.cmp.visual_note && <p>👁️ {ins.cmp.visual_note}</p>}
+        {ins.cmp.before_image && <div className="chips"><img className="entryimg" src={`/uploads/${ins.cmp.before_image}`} alt="before" /><img className="entryimg" src={`/uploads/${ins.cmp.after_image}`} alt="after" /></div>}
+      </div>}
+      {ins.plan && <div className="card">
+        {[['Today', ins.plan.today], ['Next few days', ins.plan.next_days], ['Next week', ins.plan.next_week]].map(([h, l]) => <div key={h}><b>{h}</b><ul>{l.map((x) => <li key={x}>{x}</li>)}</ul></div>)}
+      </div>}
+      {ins.why && <div className="card"><p>{ins.why.explanation}</p>
+        <ul>{ins.why.items.map((i) => <li key={i.cause}><b>{i.cause}</b> ({i.likelihood}){i.because && ` — ${i.because}`} {i.source && <a href={i.source}>source</a>}</li>)}</ul></div>}
     </>
   )
 }

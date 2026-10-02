@@ -15,7 +15,8 @@ from pydantic import BaseModel
 import db
 
 from src.pipeline import Session, DIAGNOSE_COMMANDS, emit_rag, new_ledger, context_state, uncertainty_note, plant_line
-from src.remote_vlm import MODELS
+from src.remote_vlm import MODELS, RemoteVLM
+from src import progress, diagnose
 from src import trace
 from src.build_index import build as build_index, load_config
 
@@ -273,6 +274,14 @@ MODE_HINT = {
 }
 
 
+def plant_place(plant_id):
+    """Where the plant lives (saved by the Plant tab or an earlier weather check); read fresh each turn so the model can look up the weather."""
+    plant = (db.rows("SELECT profile FROM plants WHERE id=?", (plant_id,)) or [{}])[0]
+    try: profile = json.loads(plant.get("profile") or "{}")
+    except ValueError: profile = {}
+    return {"location": (profile.get("location") or "").strip(), "setting": profile.get("indoor/outdoor") or ""}
+
+
 def plant_context(plant_id):
     """The saved plant profile and the last journal entries, as text for the prompt."""
     plant = (db.rows("SELECT * FROM plants WHERE id=?", (plant_id,)) or [{}])[0]
@@ -343,7 +352,7 @@ def ensure_conversation(cid, plant_id, first_text=""):
 STATUS_RED = {"soft_stem_base", "dark_soft_roots", "blackening"}
 
 
-def analysis_from(obs, kb, regions=()):
+def analysis_from(obs, kb, regions=(), dx=None):
     """Structured card from the observation + KB records. Every cause, pest and checklist item comes from a retrieved record."""
     recs = [r["record"] for r in kb["results"]]
     syms = obs.get("symptoms", [])
@@ -369,6 +378,7 @@ def analysis_from(obs, kb, regions=()):
         "pests": [{"name": r["cause"], "check": (r["inspect_next"] or [q["question"] for q in r["distinguishing_questions"]] or [""])[0]} for r in recs if r["cause_category"] == "pest"],
         "questions": [q["question"] for q in kb["questions"]] if not healthy else [],
         "checklist": (steps[:5] + ["Re-check in 48 hours and send a new photo"]) if steps and not healthy else (["Check again in a week or two"] if healthy else []),
+        "diagnosis": dx if dx and dx["status"] != "none" and not healthy else None,
         "regions": list(regions),   # visual symptom map: boxes as 0-1 fractions of the image
         "uncertainty": " ".join(unsure),
         "references": [{"title": r["cause"], "snippet": r["summary"], "url": r["source_url"]} for r in recs],
@@ -394,7 +404,7 @@ async def analyze(body: dict):
                     return {"skipped": True, "intent": intent}       # a plain question: no analysis card
                 await run_in_threadpool(s.ensure_observation, str(UPLOADS / image), text)
                 kb, regions = await asyncio.gather(run_in_threadpool(s.search), run_in_threadpool(s.locate_regions))
-                card = analysis_from(s.observation, kb, regions)
+                card = analysis_from(s.observation, kb, regions, diagnose.assess(kb, s.evidence))
                 if kb["results"]: emit_rag(kb, {p["record_id"] for p in card["possibilities"]}, "analysis")
                 save_message(cid, "assistant", "", image, card)
                 db.run("UPDATE plants SET status=? WHERE id=?", (card["urgency"], plant_id))
@@ -433,11 +443,11 @@ async def chat(req: ChatIn):
 
     made = {}
 
-    def run():
+    def run(push=None):
         with trace.use(tid), trace.span("turn", "Chat turn", mode=req.mode):
             s = sess
             photo = str(UPLOADS / m["image"]) if m.get("image") else None
-            reply = s.turn(m.get("content", ""), photo, extra, req.skill, {"profile": parts["profile"], "history": parts["history"]})
+            reply = s.turn(m.get("content", ""), photo, extra, req.skill, {"profile": parts["profile"], "history": parts["history"], **plant_place(req.plant_id)}, on_token=push)
             kb = s.last["kb"] if s.last.get("intent") in ("diagnose", "answer") else {"results": []}
             if s.last.get("stage") == "diagnose" and s.last.get("intent") in ("diagnose", "answer"):   # conclusions go in the journal
                 with trace.span("tool", "Write journal entry"):
@@ -457,19 +467,23 @@ async def chat(req: ChatIn):
         unsub = tr.subscribe(lambda sp: loop.call_soon_threadsafe(q.put_nowait, sp))   # spans arrive from worker threads
         yield json.dumps({"type": "conversation", "id": cid, "trace_id": tid}) + "\n"
         yield json.dumps({"type": "context", **sess.context_state(), "segments": sess.segments}) + "\n"
-        job = asyncio.ensure_future(run_in_threadpool(run))
+        push = lambda d: loop.call_soon_threadsafe(q.put_nowait, {"_tok": d})     # reply pieces arrive from the worker thread as they are written
+        job = asyncio.ensure_future(run_in_threadpool(run, push))
         job.add_done_callback(lambda _: q.put_nowait(None))
         try:
             while True:
                 sp = await q.get()
                 if sp is None: break
+                if "_tok" in sp:
+                    yield json.dumps({"type": "token", "text": sp["_tok"]}) + "\n"
+                    continue
                 yield json.dumps({"type": "span", "span": sp}) + "\n"       # live: started + finished snapshots, merged by id in the UI
             try:
                 reply = await job
             except Exception as e:
                 yield json.dumps({"type": "error", "text": f"Model call failed: {e}"}) + "\n"
                 return
-            yield json.dumps({"type": "token", "text": reply}) + "\n"
+            yield json.dumps({"type": "final", "text": reply, "diagnosis": (sess.last.get("diagnosis") or {}).get("status")}) + "\n"   # the grounded reply replaces the streamed draft
             if made.get("reminders"): yield json.dumps({"type": "reminders", **made["reminders"]}) + "\n"
             yield json.dumps({"type": "done", "trace_id": tid}) + "\n"
         finally:
@@ -530,23 +544,50 @@ def delete_conversation(cid: int):
     return {"ok": True}
 
 
+def _checkups(pid):
+    """Saved check-up cards for a plant, newest first: [(entry, card)]."""
+    out = []
+    for e in db.rows("SELECT * FROM entries WHERE plant_id=? AND kind='check-up' AND analysis IS NOT NULL ORDER BY id DESC", (pid,)):
+        try: out.append((e, json.loads(e["analysis"])))
+        except ValueError: pass
+    return out
+
+
 @app.post("/api/compare")
-def compare(body: dict):
-    """STUB: progress comparison between two entry ids / images."""
-    return {"stub": True, "trend": "improving", "summary": "Yellowing appears reduced vs. previous photo."}
+async def compare(body: dict):
+    """Progress comparison between two check-ups (entry ids; default: the two most recent)."""
+    pid = body.get("plant_id", 1)
+    cards = _checkups(pid)
+    by_id = {e["id"]: (e, c) for e, c in cards}
+    after = by_id.get(body.get("after_id")) or (cards[0] if cards else None)
+    before = by_id.get(body.get("before_id")) or next(((e, c) for e, c in cards if after and e["id"] < after[0]["id"]), None)
+    if not after or not before: raise HTTPException(400, "need two check-ups to compare; upload another photo first")
+    out = progress.compare_cards(before[1], after[1])
+    out.update(before_id=before[0]["id"], after_id=after[0]["id"], before_image=before[0]["image"], after_image=after[0]["image"])
+    if body.get("visual") and before[0]["image"] and after[0]["image"]:
+        out["visual_note"] = await run_in_threadpool(progress.visual_note, RemoteVLM(), str(UPLOADS / before[0]["image"]), str(UPLOADS / after[0]["image"]))
+    return out
 
 
 @app.post("/api/plan")
 def plan(body: dict):
-    """STUB: recovery plan."""
-    return {"stub": True, "today": ["Stop watering"], "next_days": ["Check soil moisture daily"],
-            "next_week": ["Upload a new photo to compare"]}
+    """Recovery plan from the latest check-up."""
+    cards = _checkups(body.get("plant_id", 1))
+    if not cards: raise HTTPException(400, "no check-up yet; upload a photo first")
+    card = cards[0][1]
+    return progress.build_plan(card, RECHECK_DAYS.get(card.get("urgency"), 2))
 
 
 @app.post("/api/why")
 def why(body: dict):
-    """STUB: explain why a recommendation was made."""
-    return {"stub": True, "explanation": "Recommendation is based on yellowing + wet soil in your profile."}
+    """Explain why the latest check-up suggested what it did."""
+    pid = body.get("plant_id", 1)
+    cards = _checkups(pid)
+    if not cards: raise HTTPException(400, "no check-up yet; upload a photo first")
+    rows = db.rows("SELECT profile FROM plants WHERE id=?", (pid,))
+    try: profile = json.loads(rows[0]["profile"]) if rows else {}
+    except ValueError: profile = {}
+    return progress.explain_card(cards[0][1], profile, body.get("cause"))
 
 
 @app.websocket("/api/live")

@@ -78,15 +78,28 @@ export default function App() {
     const tid = Math.random().toString(36).slice(2, 14)    // one trace per send: the photo analysis and the chat reply both log to it
     traceRef.id = tid; setTr({ id: tid, spans: [] })
     setItems(next); setInput(''); setPending(null); setBusy(true)
-    const img = user.image || (skill && [...items].reverse().find((m) => m.image)?.image)   // a re-check reuses the last photo
+    const img = user.image || (skill === 'diagnose' && [...items].reverse().find((m) => m.image)?.image)   // a re-check reuses the last photo
     if (img) api.analyze({ plant_id: pid, image: img, conversation_id: cid, text, skill, trace_id: tid }).then((a) => {
       loadTrace(tid)
       if (a.skipped) return
       setItems((cur) => [...cur, { analysis: a, url: user.url || lastImage }]); bump()
     }).catch(() => loadTrace(tid))
+    let streamed = false
+    const reveal = (i, text) => new Promise((done) => {   // typewriter for replies that arrive whole
+      let n = 0
+      const t = setInterval(() => {
+        n = Math.min(text.length, n + 6)
+        setItems((cur) => { const c = [...cur]; c[i] = { ...c[i], content: text.slice(0, n) }; return c })
+        if (n >= text.length) { clearInterval(t); done() }
+      }, 18)
+    })
     try {
-      await api.chat({ plant_id: pid, conversation_id: cid, messages: msgs([...items, user]), mode, skill, trace_id: tid }, (ev) => {
-        if (ev.type === 'token') setItems((cur) => { const c = [...cur]; c[slot] = { ...c[slot], content: c[slot].content + ev.text }; return c })
+      await api.chat({ plant_id: pid, conversation_id: cid, messages: msgs([...items, user]), mode, skill, trace_id: tid }, async (ev) => {
+        if (ev.type === 'token') { streamed = true; setItems((cur) => { const c = [...cur]; c[slot] = { ...c[slot], content: c[slot].content + ev.text }; return c }) }
+        else if (ev.type === 'final') {   // the grounded reply replaces the streamed draft; a reply that was not streamed (Q&A, refusals) is revealed progressively
+          setItems((cur) => cur[slot]?.content ? (() => { const c = [...cur]; c[slot] = { ...c[slot], content: ev.text }; return c })() : cur)
+          if (!streamed) await reveal(slot, ev.text)
+        }
         else if (ev.type === 'reminders') setItems((cur) => [...cur, { reminders: ev }])
         else if (ev.type === 'span') addSpan(ev.span)
         else if (ev.type === 'context') setCtx(ev)
