@@ -2,6 +2,30 @@
 
 Visual plant health assistant: **photo → check for a problem → retrieve from a small knowledge base → provisional diagnosis**, with optional follow-up questions, a plant journal, saved chats and a weather-impact check.
 
+## Open source
+MIT licensed ([LICENSE](LICENSE)). The project is built on open-weight models:
+
+| Role | Model | License |
+|---|---|---|
+| Main vision-language model | Qwen3-VL-30B-A3B / 8B-Instruct | Apache-2.0 |
+| Plant-ID votes (other families) | Gemma, Llama | Gemma terms / Llama community license |
+| KB embedder (local) | sentence-transformers/all-MiniLM-L6-v2 | Apache-2.0 |
+
+Models are called through any OpenAI-compatible endpoint. To run fully local, serve a Qwen3-VL build with Ollama or vLLM and set `PLANTLENS_BASE_URL=http://localhost:11434/v1` and `PLANTLENS_MODEL=<local model name>`; no `HF_TOKEN` is needed for a localhost URL.
+
+## Agent skill
+[`plantlens/`](plantlens/) is an Agent Skill following the Agent Skills open standard: `SKILL.md` (YAML frontmatter `name` + `description`), `references/` and `evals/`. Install by copying the folder into `.claude/skills/` (or your agent's skills directory).
+
+## Harness (original implementation)
+The `src/` pipeline is an original model harness around open-weight models, not a thin API call:
+- **Router** sends photos/diagnose requests, plain plant questions and off-topic messages down different paths.
+- **Per-symptom photo verification:** every symptom the model reports is re-checked against the image.
+- **Code-written output:** steps, sources and questions come from retrieved KB records, not model memory.
+- **Multi-family identification vote** (Qwen x3 + Gemma + Llama) with calibrated confidence.
+- **Citation guardrails:** numbers checked in code, wording by a second model call; web fallback restricted to trusted domains.
+- **Tracing and context ledger** for every model call (`src/trace.py`, `src/limits.py`).
+- Provider fallback across hosts, and CI-run offline tests (`.github/workflows/tests.yml`).
+
 ## Run
 1. Put a Hugging Face token (with "Make calls to Inference Providers") in `.env` at the repo root or in `src/`: `HF_TOKEN=hf_...` (git-ignored).
 2. Backend (Python 3.12 venv in `backend/.venv`): `pip install -r backend/requirements.txt`, then `./run.sh` (API on :8000, UI on :5173).

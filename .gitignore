@@ -5,3 +5,6 @@ backend/plantlens.db
 frontend/node_modules/
 frontend/dist/
 .env
+__pycache__/
+*.pyc
+.DS_Store

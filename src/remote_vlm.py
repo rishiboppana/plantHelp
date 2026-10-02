@@ -40,8 +40,10 @@ class RemoteVLM:
         self.models = [model] if model else MODELS
         self.base_url = (base_url or BASE_URL).rstrip("/")
         self.token = token or os.environ.get("HF_TOKEN")
-        if not self.token:
-            raise RuntimeError("set the HF_TOKEN environment variable")
+        local = any(h in self.base_url for h in ("localhost", "127.0.0.1"))
+        if not self.token and not local:
+            raise RuntimeError("set the HF_TOKEN environment variable (or point PLANTLENS_BASE_URL at a local server)")
+        self.token = self.token or "local"
         self.timeout = timeout
         self._tl = threading.local()
         self.on_usage = None       # optional callback(label, usage) after every successful call (the session's context ledger)
