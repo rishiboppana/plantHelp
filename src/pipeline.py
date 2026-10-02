@@ -8,7 +8,9 @@ from src.remote_vlm import RemoteVLM, MODELS, BASE_URL
 from src.limits import context_limit
 from src.convgraph import ConvGraph, EXTRACT
 from src.retrieve import retrieve
+from src.websearch import web_search, parse_search_request, format_results
 from src import trace
+from src.guardrails import guard, REFUSE_IN, REFUSE_OUT
 from src.trace import span, tok
 from src.validate.validate import KB
 
@@ -53,7 +55,12 @@ If the answer depends on things you cannot see (pot size, light, season, soil), 
 If the user describes a problem, suggest sending a photo or typing /diagnose so you can check it properly.
 Never recommend specific pesticide products or doses. For pets or children eating a plant, suggest a vet or poison-control line.
 If it is not about plants, say you only help with plants.
-Start with ONE plain sentence that directly answers the question, alone on the first line. Only if extra detail is genuinely useful, add a line containing only --- and then the detail; otherwise stop after the first sentence."""
+Start with ONE plain sentence that directly answers the question, alone on the first line. Only if extra detail is genuinely useful, add a line containing only --- and then the detail; otherwise stop after the first sentence.
+If you do not know the answer or are not confident in it (a specific species, a rare problem, a recent or local fact), do not guess: reply with exactly one line, SEARCH: <short web search query>, and nothing else. Use it at most once and never for greetings or questions you can answer well."""
+
+WEB_ANSWER = """Web search results for the user's question are below. Answer using only these results, in the same style as before (one plain sentence, optionally --- and detail).
+Say which source you relied on by its site name. If the results do not answer the question, say you could not confirm it and suggest a local nursery or extension office. Never output SEARCH: again.
+Never recommend specific pesticide products or doses."""
 
 
 FORMAT = ("FORMAT: write ONE plain sentence (under 25 words) giving the bottom line, alone on the first line. Then a line containing only --- . "
@@ -413,11 +420,24 @@ class Session:
         with span("wait", "Waiting for the session lock"): self.lock.acquire()
         try:
             self._parts = parts or {}
+            ok, rail = guard.check_input(text)
+            if not ok: return self._blocked(REFUSE_IN, "input", rail)
             reply = self._dispatch(text, photo, extra_context, skill)
+            ok, rail = guard.check_output(reply)
+            if not ok: return self._blocked(REFUSE_OUT, "output", rail)
             self._after_turn(text, reply)
             return reply
         finally:
             self.lock.release()
+
+    def _blocked(self, reply, where, rail):
+        """A guardrail stopped this turn: show the refusal, and keep the blocked text out of the history, journal and memory graph."""
+        trace.event("tool", f"Guardrail blocked the {where}", rail=rail)
+        for h in (self.history, self.qa_history):            # an unsafe reply was already stored by the turn: overwrite it
+            if where == "output" and h and h[-1]["role"] == "assistant": h[-1] = {"role": "assistant", "content": reply}
+        self.turns += 1
+        self.last = {"intent": "blocked", "stage": self.last.get("stage"), "kb": {"results": []}}
+        return reply
 
     def _after_turn(self, text, reply):
         """Log the exchange. Once the chat has used GRAPH_AT of the window it is condensed into the graph; from then on the graph grows instead."""
@@ -531,7 +551,19 @@ class Session:
         msgs = [{"role": "system", "content": GENERAL}, {"role": "user", "content": "CONTEXT (do not repeat it):\n" + "\n".join(ctx or ["No photo yet."])}]
         prior = [] if self.graph else self.qa_history[-6:]
         msgs += prior + [{"role": "user", "content": text}]
-        reply = split_reply(self.vlm.chat(msgs, 450, 0.3, "Answer plant question"))
+        reply = self.vlm.chat(msgs, 450, 0.3, "Answer plant question")
+        query = parse_search_request(reply)
+        if query:                                         # the model said it does not know: search the web once, then answer from the results
+            with span("tool", "Web search", query=query) as a:
+                results = web_search(query)
+                a.update(results=len(results), urls=[r["url"] for r in results])
+            found_web = format_results(results) if results else "(no results; the search failed or found nothing)"
+            msgs += [{"role": "assistant", "content": reply}, {"role": "user", "content": f"{WEB_ANSWER}\n\nSEARCH QUERY: {query}\n\nRESULTS:\n{found_web}"}]
+            reply = self.vlm.chat(msgs, 450, 0.3, "Answer with web results")
+            if parse_search_request(reply): reply = "I could not confirm that. A local nursery or extension office can help."
+        reply = split_reply(reply)
+        if query and results:                             # sources go in the expandable detail, not the one-line summary
+            reply += ("\n" if "\n---\n" in reply else "\n---\n") + "**Sources:** " + ", ".join(r["url"] for r in results[:3])
         self._record_context(GENERAL, found, "", earlier + " ".join(m["content"] for m in prior if m["role"] == "assistant"),
                              " ".join(m["content"] for m in prior if m["role"] == "user") + " " + text, extra_context, False, facts)
         if not self.graph: self.qa_history += [{"role": "user", "content": text}, {"role": "assistant", "content": reply}]

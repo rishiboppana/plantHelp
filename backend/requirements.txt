@@ -6,3 +6,4 @@ pyyaml
 jsonschema
 certifi
 sentence-transformers
+nemoguardrails

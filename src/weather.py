@@ -4,6 +4,7 @@ Sends only the place name to Open-Meteo. Usage: python -m src.weather "San Jose"
 """
 import argparse, datetime, json, re, sqlite3, ssl, urllib.parse, urllib.request
 from src.build_index import ROOT, load_config
+from src.trace import span
 
 try:
     import certifi
@@ -68,18 +69,31 @@ def weather_records():
 
 SYSTEM = """You are PlantLens. Explain how recent and upcoming weather could affect one plant, for a home gardener.
 Use ONLY the weather numbers and the KNOWLEDGE BASE RECORDS given. Cite records as [rec_...]. Do not invent temperature or humidity limits;
-the only numeric limit you may use is the one stated in a record. Weather rarely proves a cause, so use words like 'could' and 'may'.
+the only numeric limit you may use is the one stated in a record.
+web_search_local_news, when present, is recent news from a web search: use it only to mention a local alert such as frost, a heat wave or a storm, name the source site, and never take a temperature limit or care rule from it. Weather rarely proves a cause, so use words like 'could' and 'may'.
 If the plant is indoors, weather matters mainly through windows, drafts, heating or cooling and dry air; say so. If the setting is unknown, say what it depends on.
 If the plant already shows symptoms, say whether the past weather could plausibly relate to them, as a possibility.
 FORMAT: ONE plain sentence (under 25 words) as the bottom line on the first line, then a line containing only ---, then three short sections with
 these exact bold headings: **Past two weeks**, **Next 7 days**, **What to watch**. Keep it brief. No pesticide products or doses."""
 
 
-def assess(vlm, place, past, future, setting, plant_ctx, records):
+def local_alerts(place):
+    """Recent local weather news (frost, heat wave, storm warnings) via Tavily. Best effort: no key or any failure gives []."""
+    from src.websearch import tavily_key, _tavily
+    if not tavily_key(): return []
+    try:
+        return [{"title": r["title"], "url": r["url"], "snippet": r["snippet"]}
+                for r in _tavily(f"{place} weather forecast alerts frost heat wave storm this week", 3, topic="news", days=7)]
+    except Exception:
+        return []
+
+
+def assess(vlm, place, past, future, setting, plant_ctx, records, alerts=()):
     payload = {"place": place, "plant_setting": setting or "unknown", "plant": plant_ctx,
                "past_14_days": stats(past), "next_7_days": stats(future), "flags": flags(past, future),
                "daily_past": [{k: r[k] for k in ("time", "temperature_2m_min", "temperature_2m_max", "precipitation_sum")} for r in past][-7:],
                "daily_coming": [{k: r[k] for k in ("time", "temperature_2m_min", "temperature_2m_max", "precipitation_sum")} for r in future]}
+    if alerts: payload["web_search_local_news"] = list(alerts)
     recs = [{"record_id": r["record_id"], "cause": r["cause"], "category": r["cause_category"], "summary": r["summary"], "caveats": r["caveats"]} for r in records]
     msg = "DATA:\n" + json.dumps(payload) + "\n\nKNOWLEDGE BASE RECORDS:\n" + json.dumps(recs)
     from src.pipeline import split_reply
@@ -94,8 +108,12 @@ def check(place, setting="", plant_ctx=None, vlm=None):
         from src.remote_vlm import RemoteVLM
         vlm = RemoteVLM()
     label = ", ".join(x for x in (loc["name"], loc["region"], loc["country"]) if x)
+    with span("tool", "Web search (local weather news)", place=label) as a:
+        alerts = local_alerts(label)
+        a["results"] = len(alerts)
     return {"place": label, "setting": setting or "unknown", "past": stats(past), "future": stats(future), "flags": flags(past, future),
-            "assessment": assess(vlm, label, past, future, setting, plant_ctx or {}, weather_records())}
+            "assessment": assess(vlm, label, past, future, setting, plant_ctx or {}, weather_records(), alerts),
+            "alerts": alerts}
 
 
 if __name__ == "__main__":

@@ -1,0 +1,25 @@
+# NeMo Guardrails config for PlantLens. The model is supplied in code (src/guardrails.py wraps RemoteVLM), so no engine is set here.
+rails:
+  config:
+    regex_detection:
+      input:
+        case_insensitive: true
+        patterns:
+          - "ignore\\s+(all\\s+|any\\s+)?(previous|prior|above|earlier)\\s+(instructions|prompts|rules)"
+          - "disregard\\s+(your|the|all)\\s+(instructions|rules|guidelines|system prompt)"
+          - "(reveal|show|print|repeat|output)\\s+(me\\s+)?(your|the)\\s+(system\\s+prompt|instructions|hidden\\s+prompt)"
+          - "\\b(developer|dan|jailbreak|god)\\s+mode\\b"
+          - "pretend\\s+(you\\s+are|to\\s+be)\\s+(not\\s+)?(an?\\s+)?(unrestricted|unfiltered|evil)"
+      output:
+        case_insensitive: true
+        patterns:
+          # a pesticide / spray product with a dose next to it: SKILL.md says never give doses
+          - "(pesticide|insecticide|fungicide|miticide|herbicide|neem|spray)[^.\\n]{0,80}\\b\\d+(\\.\\d+)?\\s*(ml|oz|tsp|tbsp|teaspoons?|tablespoons?|cups?|mg|g)\\b"
+  input:
+    flows:
+      - regex check input
+      - self check input
+  output:
+    flows:
+      - regex check output
+      - self check output
