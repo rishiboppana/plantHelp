@@ -91,7 +91,10 @@ class QuestionPath(unittest.TestCase):
     def test_failed_search_still_answers_and_says_so(self):
         reply, vlm, _, web = run_turn({"Route message": "QUESTION", "Answer plant question": "SEARCH: x",
                                        "Answer with web results": "I could not confirm that."}, "obscure?", results=[])
-        self.assertIn("no results", vlm.calls[-1][1][-1]["content"])
+        web_call = next(c for c in vlm.calls if c[0] == "Answer with web results")
+        self.assertIn("no results", web_call[1][-1]["content"])
+        self.assertEqual(vlm.labels[-1], "Ask for missing details")        # it could not answer, so it asks for what it needs
+        self.assertIn("tell me", reply)
         self.assertNotIn("Sources", reply)
 
     def test_general_prompt_offers_the_search_tool(self):

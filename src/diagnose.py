@@ -93,3 +93,27 @@ def extract_answers(vlm, text, questions):
         return out
     except Exception:
         return {}
+
+
+GENERIC_ASKS = ["Which part of the plant is affected (new leaves, old leaves, stem, roots)?", "How long has it looked like this, and did anything change recently?",
+                "How often do you water it, and does the soil stay wet or dry out fast?"]
+CANT = re.compile(r"\b(could not|couldn't|can't|cannot|unable to) (confirm|tell|say|find)|\b(not sure|don't know|do not know)\b|won't list causes", re.I)
+
+
+def clarify(vlm, situation, text="", have=""):
+    """When the app cannot answer or pin down a cause, ask for the details that would let it. Questions only, never facts or advice.
+    Falls back to generic questions if the model call fails."""
+    ask = (f"You are a plant helper that could not answer yet. Situation: {situation}\nUser's message: \"{text or '(a photo)'}\"\n"
+           + (f"What is already known: {have}\n" if have else "")
+           + "Write 2 or 3 short, specific questions the user can answer (what they can see, what they did, the plant's conditions) that would help you answer. "
+             "Do not repeat what is already known. Output ONLY the questions, one per line, each ending with '?'. No advice, no facts.")
+    try:
+        lines = [re.sub(r"^\s*(?:[-*\d.)]+\s*)", "", l).strip() for l in vlm.chat([{"role": "user", "content": ask}], 150, 0.2, "Ask for missing details").splitlines()]
+        qs = list(dict.fromkeys(l for l in lines if l.endswith("?") and 8 < len(l) < 200))[:3]
+    except Exception:
+        qs = []
+    return qs or GENERIC_ASKS[:2]
+
+
+def clarify_text(qs):
+    return "**I can't answer this confidently yet. To help me, tell me:**\n" + "\n".join(f"{i}. {q}" for i, q in enumerate(qs, 1)) if qs else ""

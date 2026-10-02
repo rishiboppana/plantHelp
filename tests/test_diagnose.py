@@ -77,3 +77,22 @@ class Stream(unittest.TestCase):
 
 
 if __name__ == "__main__": unittest.main()
+
+
+class Clarify(unittest.TestCase):
+    def test_questions_are_parsed_and_capped(self):
+        from src.diagnose import clarify, clarify_text
+        class V:
+            def chat(self, *a, **k): return "1. Which leaves are affected?\n2) Did you move the plant recently?\n- Is there webbing on the leaves?\nHere is some advice."
+        qs = clarify(V(), "x", "help")
+        self.assertEqual(len(qs), 3); self.assertTrue(all(q.endswith("?") for q in qs)); self.assertIn("tell me", clarify_text(qs))
+
+    def test_failure_falls_back_to_generic_questions(self):
+        from src.diagnose import clarify, GENERIC_ASKS
+        class Bad:
+            def chat(self, *a, **k): raise RuntimeError("down")
+        self.assertEqual(clarify(Bad(), "x"), GENERIC_ASKS[:2])
+
+    def test_cant_answer_detector(self):
+        from src.diagnose import CANT
+        self.assertTrue(CANT.search("I could not confirm that.")); self.assertTrue(CANT.search("I'm not sure which plant")); self.assertFalse(CANT.search("Water when the top inch is dry."))

@@ -40,6 +40,8 @@ The `src/` pipeline is an original model harness around open-weight models, not 
 ## Diagnosis and confirmation (`src/diagnose.py`)
 The retrieved candidate causes are ranked in code, and the user's yes/no answers to each record's own distinguishing questions count as evidence for or against them (one small model call reads the answers). The status is **confirmed** (two or more supporting answers, none against, clear lead), **likely**, or **undetermined**. The reply's first line states that verdict, and the detail ends with what supports it, what is unlikely, and the specific questions that would settle it. The photo-check card shows the same verdict with Yes/No buttons.
 
+When the app cannot answer (the knowledge base and the web both come up empty, the photo shows no clear symptom, or no candidate cause matches), it asks 2-3 specific follow-up questions instead of stopping (`diagnose.clarify`). The questions come from one model call and never contain advice; if that call fails, generic questions are used.
+
 ## Streaming
 `RemoteVLM.stream_chat` streams the diagnosis reply token by token (server-sent events, provider fallback only before the first token). When the reply is finished the app replaces the draft with the grounded version (steps and sources written from the records, verdict block). Replies that must be checked before being shown (care answers, refusals) arrive whole and are revealed progressively in the UI.
 

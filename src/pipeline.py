@@ -742,6 +742,7 @@ class Session:
             msgs += [{"role": "assistant", "content": reply}, {"role": "user", "content": f"{WEB_ANSWER}\n\nSEARCH QUERY: {query}\n\nRESULTS:\n{found_web}"}]
             reply = self.vlm.chat(msgs, 450, 0.3, "Answer with web results")
             if parse_search_request(reply): reply = "I could not confirm that. A local nursery or extension office can help."
+        unable = bool((query and not results) or diagnose.CANT.search(reply.split("\n---\n")[0]))   # could not answer: ask for details instead of leaving it there
         reply = split_reply(reply)
         head0, sep0, rest0 = reply.partition("\n---\n")
         reply = re.sub(r"\s*\[\d+\]", "", head0) + sep0 + rest0
@@ -760,6 +761,9 @@ class Session:
                 reply = head + "\n---\n" + ((rest + "\n") if rest else "") + "**Sources:** " + ", ".join(dict.fromkeys(r["source_url"] for r in used)) \
                         + "\n**Based on:** " + "; ".join(f"{r['cause']} [{r['record_id']}]" for r in used)
                 emit_rag(refkb, set(cited), "answer")
+        if unable:
+            with span("tool", "Ask for missing details"):
+                reply = reply.rstrip() + ("\n" if "\n---\n" in reply else "\n---\n") + diagnose.clarify_text(diagnose.clarify(self.vlm, "the question could not be answered from the knowledge base or the web", text, found))
         self._record_context(GENERAL, found, rag, earlier + " ".join(m["content"] for m in prior if m["role"] == "assistant"),
                              " ".join(m["content"] for m in prior if m["role"] == "user") + " " + text, extra_context, False, facts)
         if not self.graph: self.qa_history += [{"role": "user", "content": text}, {"role": "assistant", "content": reply}]
@@ -830,6 +834,12 @@ class Session:
             cited = set(re.findall(r"\[(rec_\d+)\]", reply)) | set(report.get("used", []))
             emit_rag(kb, cited, "reply", report.get("used", []) if report.get("fallback") else [])
         shown = self.observation.get("image_quality") != "poor" and self.observation.get("health") != "healthy"
+        stuck = shown and (dx["status"] == "none" or (dx["status"] == "undetermined" and not dx["confirm"]))   # no cause to chase and nothing left to ask from the records
+        if self.observation.get("health") != "healthy" and (stuck or not self.observation.get("symptoms")) and self.observation.get("image_quality") != "poor":
+            with span("tool", "Ask for missing details"):
+                qs = diagnose.clarify(self.vlm, "the photo shows no clear symptom or the knowledge base has no matching cause", text,
+                                      f"plant: {plant_line(self.observation.get('plant'))}; symptoms seen: {', '.join(self.observation.get('symptoms') or []) or 'none'}")
+                reply = reply.rstrip() + ("\n---\n" if "\n---\n" not in reply else "\n") + diagnose.clarify_text(qs)
         if shown and dx["status"] != "none":
             reply = reply.rstrip() + ("\n---\n" if "\n---\n" not in reply else "\n") + diagnose.diagnosis_text(dx)   # verdict + the questions that would settle it: written by code
         if not gm: self.history.append({"role": "assistant", "content": reply})
