@@ -35,6 +35,8 @@ export const api = {
   setReminderSettings: (auto) => put('/api/reminders/settings', { auto }),
   reminders: (pid) => fetch(`/api/reminders?plant_id=${pid}`).then(j),
   remindersFromChat: (cid) => fetch(`/api/reminders/from-conversation/${cid}`, { method: 'POST', headers: H(), body: '{}' }).then((r) => { if (!r.ok) throw new Error(); return r.json() }),
+  plantCards: () => fetch('/api/cards/plants').then(j),
+  chatCards: () => fetch('/api/cards/chats').then(j),
   trace: (id) => fetch(`/api/traces/${id}`).then(j),
   traces: (cid) => fetch(`/api/conversations/${cid}/traces`).then(j),
   analyze: (b) => post('/api/analyze', b),

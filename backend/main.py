@@ -36,7 +36,7 @@ app = FastAPI(title="PlantLens")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.mount("/uploads", StaticFiles(directory=UPLOADS), name="uploads")
 db.init()
-import reminders, reminder_agent; app.include_router(reminders.router)   # Apple Reminders bridge (backend/reminders.py)
+import reminders, reminder_agent, cards, plant_namer; app.include_router(reminders.router); app.include_router(cards.router); app.include_router(plant_namer.router)   # Apple Reminders bridge (backend/reminders.py)
 
 
 def load_trace(tid):
@@ -446,6 +446,8 @@ async def chat(req: ChatIn):
                                                                           "coverage": kb.get("coverage")})))
             save_message(cid, "assistant", reply)
             save_state(cid, s)
+            try: plant_namer.name_plant(req.plant_id, cid)               # a plant with a placeholder name gets a model-written unique one
+            except Exception: pass
             try: made["reminders"] = reminder_agent.process_reply(req.plant_id, m.get("content", ""), reply)   # the model's schedule_reminders tool call
             except Exception: pass                                   # reminders are a bonus: never fail the chat turn
             return reply

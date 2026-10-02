@@ -5,13 +5,15 @@ import LeftNav from './LeftNav.jsx'
 import Garden from './Garden.jsx'
 import AnalysisCard from './AnalysisCard.jsx'
 import Reasoning from './Reasoning.jsx'
+import Cards from './Cards.jsx'
 import { ReminderNote } from './Reminders.jsx'
 
 const MODES = [['normal', 'Check-up'], ['rescue', 'SOS'], ['healthy', 'Healthy']]
 
 export default function App() {
-  const [plants, setPlants] = useState([]); const [plantId, setPlantId] = useState(1)
-  const [chats, setChats] = useState([]); const [chatId, setChatId] = useState(null); const [view, setView] = useState('chat')
+  const [plants, setPlants] = useState([]); const [plantId, setPlantId] = useState(0)   // 0 = a new plant, named by the assistant once it knows what it is
+  
+  const [chats, setChats] = useState([]); const [chatId, setChatId] = useState(null); const [view, setView] = useState('chat'); const [focus, setFocus] = useState(null)
   const [items, setItems] = useState([]) // {role, content, image?, url?} | {analysis, url} | {reminders}
   const [input, setInput] = useState(''); const [pending, setPending] = useState(null) // {image, url}
   const [mode, setMode] = useState('normal'); const [ctx, setCtx] = useState(null); const [busy, setBusy] = useState(false)
@@ -49,7 +51,7 @@ export default function App() {
     setTr((cur) => { if (!cur) return cur; const i = cur.spans.findIndex((x) => x.id === sp.id); const spans = [...cur.spans]; if (i < 0) spans.push(sp); else spans[i] = sp; return { ...cur, spans } })
     if (sp.kind === 'context' && 'segments' in sp.attrs) setCtx((c) => ({ ...c, ...sp.attrs }))
   }
-  const newChat = (pid = plantId) => { setTr(null); refreshCtx(0, true); traceRef.id = null; setChatId(null); setItems([]); setPending(null); setPlantId(pid); setView('chat') }
+  const newChat = (pid = 0) => { setTr(null); refreshCtx(0, true); traceRef.id = null; setChatId(null); setItems([]); setPending(null); setPlantId(pid); setView('chat') }
   async function openChat(id) {
     const c = await api.getChat(id)
     const meta = chats.find((x) => x.id === id)
@@ -66,8 +68,10 @@ export default function App() {
 
   async function send(text = input, skill = '') {   // skill 'diagnose' forces the check-up (also: type /diagnose)
     if (busy || (!text.trim() && !pending && !skill)) return
+    let pid = plantId
+    if (!pid) { pid = (await api.addPlant('New plant')).id; setPlantId(pid); refresh() }   // each new chat starts its own plant; the assistant names it
     let cid = chatId
-    if (!cid) { cid = (await api.newChat(plantId)).id; setChatId(cid) }  // created first so the photo analysis and the chat share one saved conversation
+    if (!cid) { cid = (await api.newChat(pid)).id; setChatId(cid) }  // created first so the photo analysis and the chat share one saved conversation
     const user = { role: 'user', content: text, image: pending?.image, url: pending?.url }
     const next = [...items, user, { role: 'assistant', content: '' }]
     const slot = next.length - 1
@@ -75,13 +79,13 @@ export default function App() {
     traceRef.id = tid; setTr({ id: tid, spans: [] })
     setItems(next); setInput(''); setPending(null); setBusy(true)
     const img = user.image || (skill && [...items].reverse().find((m) => m.image)?.image)   // a re-check reuses the last photo
-    if (img) api.analyze({ plant_id: plantId, image: img, conversation_id: cid, text, skill, trace_id: tid }).then((a) => {
+    if (img) api.analyze({ plant_id: pid, image: img, conversation_id: cid, text, skill, trace_id: tid }).then((a) => {
       loadTrace(tid)
       if (a.skipped) return
       setItems((cur) => [...cur, { analysis: a, url: user.url || lastImage }]); bump()
     }).catch(() => loadTrace(tid))
     try {
-      await api.chat({ plant_id: plantId, conversation_id: cid, messages: msgs([...items, user]), mode, skill, trace_id: tid }, (ev) => {
+      await api.chat({ plant_id: pid, conversation_id: cid, messages: msgs([...items, user]), mode, skill, trace_id: tid }, (ev) => {
         if (ev.type === 'token') setItems((cur) => { const c = [...cur]; c[slot] = { ...c[slot], content: c[slot].content + ev.text }; return c })
         else if (ev.type === 'reminders') setItems((cur) => [...cur, { reminders: ev }])
         else if (ev.type === 'span') addSpan(ev.span)
@@ -91,7 +95,7 @@ export default function App() {
     } finally {
       setBusy(false); loadTrace(tid); refreshCtx(cid, true)
       const turns = next.filter((m) => m.role === 'user').length
-      refreshChats()
+      refreshChats(); bump()      // bump: the plant may just have been named
       if (turns === 1 || turns === 3) api.titleChat(cid).then(refreshChats)
     }
   }
@@ -99,13 +103,15 @@ export default function App() {
 
   return (
     <div className="app">
-      <LeftNav chats={chats} chatId={chatId} view={view} setView={setView} openChat={openChat} newChat={() => newChat()} delChat={delChat} plants={plants} />
+      <LeftNav chats={chats} chatId={chatId} view={view} setView={(v) => { setFocus(null); setView(v) }} openChat={openChat} newChat={() => newChat()} delChat={delChat} plants={plants} />
       <div className="main">
-        {view === 'garden'
-          ? <Garden plants={plants} refresh={refresh} version={version} bump={bump} chatWith={(pid) => newChat(pid)} />
+        {view === 'cards'
+          ? <Cards version={version} openPlant={(pid) => { setFocus(pid); setView('garden') }} chatWith={(pid) => newChat(pid)} openChat={openChat} />
+          : view === 'garden'
+          ? <Garden key={focus} focus={focus} plants={plants} refresh={refresh} version={version} bump={bump} chatWith={(pid) => newChat(pid)} />
           : <>
             <div className="top">
-              <select value={plantId} disabled={!!items.length} title="Which plant is this chat about?" onChange={(e) => setPlantId(+e.target.value)}>{plants.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
+              <select value={plantId} disabled={!!items.length} title="Which plant is this chat about?" onChange={(e) => setPlantId(+e.target.value)}><option value={0}>✨ New plant (auto-named)</option>{plants.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
               <div className="modes">{MODES.map(([k, l]) => <button key={k} className={mode === k ? 'on' : ''} onClick={() => setMode(k)}>{l}</button>)}</div>
               <button className="toggle" style={{ marginLeft: 'auto' }} onClick={() => setOpen(!open)}>{open ? 'Hide panel' : '🧠 Panel'}</button>
             </div>

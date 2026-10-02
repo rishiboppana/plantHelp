@@ -5,8 +5,8 @@ import { Profile, Journal, Progress } from './Panels.jsx'
 const LABEL = { green: 'Healthy', yellow: 'Needs attention', red: 'Urgent' }
 
 // My plants: card grid -> click a plant for its full profile, journal and progress
-export default function Garden({ plants, refresh, version, bump, chatWith }) {
-  const [sel, setSel] = useState(null); const [name, setName] = useState(''); const [sub, setSub] = useState('Journal')
+export default function Garden({ plants, refresh, version, bump, chatWith, focus = null }) {
+  const [sel, setSel] = useState(focus); const [name, setName] = useState(''); const [sub, setSub] = useState('Journal')
   const plant = plants.find((p) => p.id === sel)
   if (plant) return (
     <div className="gpage">

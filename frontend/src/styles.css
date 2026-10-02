@@ -196,3 +196,6 @@ select.convs{max-width:200px}
 .rag small a { color: var(--dark); }
 .rag details summary { font-size: 12px; }
 .rag details div { font-size: 13px; }
+.grid.wide { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.fullcard .pinfo { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px 16px; }
+.fullcard .pinfo small { color: var(--dark); opacity: .8; }

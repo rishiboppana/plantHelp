@@ -7,6 +7,7 @@ export default function LeftNav({ chats, chatId, view, setView, openChat, newCha
       <div className="brand">🌿 PlantLens</div>
       <button className="primary newchat" onClick={newChat}>＋ New chat</button>
       <button className={`navbtn ${view === 'garden' ? 'on' : ''}`} onClick={() => setView('garden')}>🪴 My plants{due > 0 && <span className="badge warn" style={{ marginLeft: 8 }} title="Follow-ups due or overdue">{due}</span>}</button>
+      <button className={`navbtn ${view === 'cards' ? 'on' : ''}`} onClick={() => setView('cards')}>🗂️ Cards</button>
       <div className="navlabel">Chats</div>
       <div className="chatlist">
         {!chats.length && <p className="hint">Your conversations will show up here.</p>}
