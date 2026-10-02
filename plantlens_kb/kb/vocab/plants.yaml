@@ -1,0 +1,73 @@
+groups:
+- houseplant
+- succulent
+plants:
+- id: jade
+  name: Jade plant
+  aliases:
+  - jade plant
+  - Crassula ovata
+  groups:
+  - succulent
+  - houseplant
+- id: pothos
+  name: Pothos
+  aliases:
+  - pothos
+  - Epipremnum
+  groups:
+  - houseplant
+- id: snake_plant
+  name: Snake plant
+  aliases:
+  - snake plant
+  - Sansevieria
+  - Dracaena trifasciata
+  groups:
+  - succulent
+  - houseplant
+- id: peace_lily
+  name: Peace lily
+  aliases:
+  - peace lily
+  groups:
+  - houseplant
+- id: spider_plant
+  name: Spider plant
+  aliases:
+  - spider plant
+  groups:
+  - houseplant
+- id: aloe_vera
+  name: Aloe vera
+  aliases:
+  - aloe
+  - aloe vera
+  groups:
+  - succulent
+  - houseplant
+- id: chinese_evergreen
+  name: Chinese evergreen
+  aliases:
+  - Chinese evergreen
+  groups:
+  - houseplant
+- id: monstera
+  name: Monstera
+  aliases:
+  - monstera
+  groups:
+  - houseplant
+- id: african_violet
+  name: African violet
+  aliases:
+  - African violet
+  groups:
+  - houseplant
+- id: dracaena
+  name: Dracaena
+  aliases:
+  - dracaena
+  - Dracaena deremensis
+  groups:
+  - houseplant

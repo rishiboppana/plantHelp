@@ -1,0 +1,18 @@
+# Starter houseplant list: names only, no care facts. Extend as sources are ingested.
+groups: [succulent, tropical_foliage, flowering, vine, fern, palm, herb, other]
+plants:
+  - {id: pothos, names: [pothos, devil's ivy], scientific: Epipremnum aureum, aliases: [golden pothos], group: vine}
+  - {id: monstera, names: [monstera, swiss cheese plant], scientific: Monstera deliciosa, aliases: [], group: tropical_foliage}
+  - {id: snake_plant, names: [snake plant], scientific: Dracaena trifasciata, aliases: [sansevieria, mother-in-law's tongue], group: succulent}
+  - {id: spider_plant, names: [spider plant], scientific: Chlorophytum comosum, aliases: [], group: tropical_foliage}
+  - {id: peace_lily, names: [peace lily], scientific: Spathiphyllum, aliases: [], group: flowering}
+  - {id: fiddle_leaf_fig, names: [fiddle leaf fig], scientific: Ficus lyrata, aliases: [], group: tropical_foliage}
+  - {id: rubber_plant, names: [rubber plant], scientific: Ficus elastica, aliases: [], group: tropical_foliage}
+  - {id: jade, names: [jade plant], scientific: Crassula ovata, aliases: [money plant], group: succulent}
+  - {id: aloe, names: [aloe vera], scientific: Aloe vera, aliases: [aloe], group: succulent}
+  - {id: philodendron, names: [philodendron], scientific: Philodendron, aliases: [], group: vine}
+  - {id: orchid, names: [orchid, moth orchid], scientific: Phalaenopsis, aliases: [], group: flowering}
+  - {id: boston_fern, names: [boston fern], scientific: Nephrolepis exaltata, aliases: [], group: fern}
+  - {id: african_violet, names: [african violet], scientific: Streptocarpus ionanthus, aliases: [], group: flowering}
+  - {id: dracaena, names: [dracaena], scientific: Dracaena, aliases: [corn plant], group: tropical_foliage}
+  - {id: zz_plant, names: [zz plant], scientific: Zamioculcas zamiifolia, aliases: [], group: tropical_foliage}

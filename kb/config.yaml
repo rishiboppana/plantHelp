@@ -1,0 +1,10 @@
+# All retrieval/index tunables live here.
+embedder: "sentence-transformers/sentence-transformers/all-MiniLM-L6-v2"   # chosen by Phase 6 eval; "hash" is for offline tests only
+N_kw: 20            # keyword candidates
+N_vec: 20           # vector candidates
+K: 5                # final results
+rrf_k: 60
+min_viable: 3       # below this, relax filters
+vec_min_score: 0.35 # cosine below this is not counted as evidence (tune in Phase 6)
+n_questions: 4      # max follow-up questions returned
+index_path: "kb/index/kb.sqlite"

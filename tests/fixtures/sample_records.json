@@ -1,0 +1,143 @@
+[
+  {
+    "record_id": "rec_900001",
+    "plants": [],
+    "plant_groups": [],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "stippling"
+    ],
+    "location_patterns": [],
+    "cause": "spider mites",
+    "cause_category": "pest",
+    "summary": "UMD's guide lists fine stippling among its symptom categories, with spider mites as a cause.",
+    "distinguishing_questions": [
+      {
+        "question": "Is there fine webbing on the leaf undersides?",
+        "if_yes": "supports this cause",
+        "if_no": "weakens this cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": null,
+    "source_id": "src_umd_indoor_plant_problems",
+    "source_url": "https://extension.umd.edu/resource/diagnose-indoor-plant-problems",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_900002",
+    "plants": [],
+    "plant_groups": [],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "bleaching"
+    ],
+    "location_patterns": [],
+    "cause": "excessive light (sunburn)",
+    "cause_category": "environment",
+    "summary": "UMD's guide lists bleached or whitened leaves as a symptom of excessive light.",
+    "distinguishing_questions": [
+      {
+        "question": "Is the damage on the side facing the window?",
+        "if_yes": "supports this cause",
+        "if_no": "weakens this cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": null,
+    "source_id": "src_umd_indoor_plant_problems",
+    "source_url": "https://extension.umd.edu/resource/diagnose-indoor-plant-problems",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_900003",
+    "plants": [],
+    "plant_groups": [],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "blackening"
+    ],
+    "location_patterns": [],
+    "cause": "cold injury",
+    "cause_category": "environment",
+    "summary": "UMD's guide lists leaf blackening as a symptom of cold injury.",
+    "distinguishing_questions": [
+      {
+        "question": "Was the plant recently near a cold window or draft?",
+        "if_yes": "supports this cause",
+        "if_no": "weakens this cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": null,
+    "source_id": "src_umd_indoor_plant_problems",
+    "source_url": "https://extension.umd.edu/resource/diagnose-indoor-plant-problems",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_900004",
+    "plants": [],
+    "plant_groups": [],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "powdery_coating"
+    ],
+    "location_patterns": [],
+    "cause": "powdery mildew",
+    "cause_category": "disease",
+    "summary": "UMD's guide lists a powdery coating as a symptom of powdery mildew.",
+    "distinguishing_questions": [
+      {
+        "question": "Does the coating wipe off like powder?",
+        "if_yes": "supports this cause",
+        "if_no": "weakens this cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": null,
+    "source_id": "src_umd_indoor_plant_problems",
+    "source_url": "https://extension.umd.edu/resource/diagnose-indoor-plant-problems",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_900005",
+    "plants": [],
+    "plant_groups": [],
+    "plant_parts": [
+      "leaf",
+      "stem"
+    ],
+    "symptoms": [
+      "white_fluff"
+    ],
+    "location_patterns": [],
+    "cause": "mealybugs",
+    "cause_category": "pest",
+    "summary": "UMD's guide lists fluffy white wax as a symptom of mealybugs.",
+    "distinguishing_questions": [
+      {
+        "question": "Is the fluff on stems or in leaf joints?",
+        "if_yes": "supports this cause",
+        "if_no": "weakens this cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": null,
+    "source_id": "src_umd_indoor_plant_problems",
+    "source_url": "https://extension.umd.edu/resource/diagnose-indoor-plant-problems",
+    "status": "draft"
+  }
+]

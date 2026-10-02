@@ -1,0 +1,6 @@
+cause_categories:
+  - {id: watering, label: Watering}
+  - {id: nutrient, label: Nutrient or fertilizer}
+  - {id: pest, label: Pest}
+  - {id: disease, label: Disease}
+  - {id: environment, label: Environment (light, temperature, humidity)}

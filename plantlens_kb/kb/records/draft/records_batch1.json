@@ -1,0 +1,1917 @@
+[
+  {
+    "record_id": "rec_001",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "stunted_growth",
+      "curling",
+      "distorted_growth",
+      "visible_insects"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "Aphids",
+    "cause_category": "pest",
+    "summary": "Tiny green, brown or black insects sit on the undersides of leaves; growth is stunted and leaves curl or distort.",
+    "distinguishing_questions": [
+      {
+        "question": "Are there tiny green, brown or black insects on the undersides of leaves?",
+        "basis": "page"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [
+      {
+        "item": "Look closely at the undersides of leaves",
+        "basis": "page"
+      }
+    ],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "Page gives no management for this pest.",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_002",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf",
+      "stem"
+    ],
+    "symptoms": [
+      "visible_insects",
+      "stunted_growth"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "Mealybugs",
+    "cause_category": "pest",
+    "summary": "White, cottony-looking scale insects on stems and the undersides of leaves; plant growth is stunted.",
+    "distinguishing_questions": [
+      {
+        "question": "Do you see white cottony bits on the stems or under the leaves?",
+        "basis": "page"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [
+      {
+        "item": "Check stems and the undersides of leaves",
+        "basis": "page"
+      }
+    ],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "Page gives no management for this pest.",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_003",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "webbing",
+      "yellowing",
+      "distorted_growth"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "Mites",
+    "cause_category": "pest",
+    "summary": "Tiny light-colored arachnids; fine webbing appears on foliage and leaves become distorted and yellowish.",
+    "distinguishing_questions": [
+      {
+        "question": "Is there fine webbing on the leaves?",
+        "basis": "page"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "Page gives no management for this pest.",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_004",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf",
+      "stem"
+    ],
+    "symptoms": [
+      "visible_insects",
+      "stunted_growth"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "Scale insects",
+    "cause_category": "pest",
+    "summary": "Oval or round brown insects on stems and leaves; they suck plant juices, which leads to poor, stunted growth.",
+    "distinguishing_questions": [
+      {
+        "question": "Are there small oval or round brown bumps on the stems or leaves?",
+        "basis": "page"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "Page gives no management for this pest.",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_005",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf",
+      "flower"
+    ],
+    "symptoms": [
+      "distorted_growth",
+      "faded_color"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "Thrips",
+    "cause_category": "pest",
+    "summary": "Extremely tiny insects (adults light tan to dark brown); leaves and flowers become distorted and discolored.",
+    "distinguishing_questions": [],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "Page gives no management for this pest. Insects are too small to see easily in a photo.",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_006",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "yellowing",
+      "faded_color",
+      "visible_insects"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "Whiteflies",
+    "cause_category": "pest",
+    "summary": "Small white, gnat-like insects; leaves turn pale yellow or white.",
+    "distinguishing_questions": [
+      {
+        "question": "Do small white flying insects rise when you touch the plant?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "Page gives no management. The question is derived from the 'gnat-like' description.",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_007",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "yellowing",
+      "brown_tips_edges"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "Anthracnose (fungal)",
+    "cause_category": "disease",
+    "summary": "Leaf tips turn yellow and then brown, and the whole leaf may die.",
+    "distinguishing_questions": [],
+    "next_actions": [
+      "Remove infected leaves",
+      "Avoid misting"
+    ],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_008",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "brown_spots"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "Leaf spot diseases (fungal or bacterial)",
+    "cause_category": "disease",
+    "summary": "Fungal spots are brown with a yellow halo; bacterial spots look water-soaked with a yellow halo. Fungal structures may be visible under magnification.",
+    "distinguishing_questions": [
+      {
+        "question": "Are the spots brown with a yellow ring, or do they look water-soaked?",
+        "basis": "page"
+      }
+    ],
+    "next_actions": [
+      "Remove infected leaves",
+      "Increase air circulation",
+      "Avoid wetting the leaves"
+    ],
+    "inspect_next": [
+      {
+        "item": "Look at the spots with a magnifier for tiny fungal structures",
+        "basis": "page"
+      }
+    ],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_009",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "white_powdery_coating",
+      "distorted_growth",
+      "leaf_drop"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "Powdery mildew (fungal)",
+    "cause_category": "disease",
+    "summary": "White powdery growth on foliage, with distorted leaves and possible leaf drop.",
+    "distinguishing_questions": [],
+    "next_actions": [
+      "Increase air circulation",
+      "Avoid saturated soil",
+      "Remove severely infected foliage"
+    ],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_010",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "roots",
+      "stem"
+    ],
+    "symptoms": [
+      "soft_mushy_stem",
+      "wilting_drooping"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "Root and stem rots",
+    "cause_category": "disease",
+    "summary": "Roots turn soft and brown or black; stems go soft with a brown or black ring near the soil line; the plant wilts and can die.",
+    "distinguishing_questions": [
+      {
+        "question": "Is the stem soft or dark near the soil line, or are the roots soft and brown/black?",
+        "basis": "page"
+      }
+    ],
+    "next_actions": [
+      "Avoid overwatering",
+      "Remove infected plants",
+      "If only partly infected, cut off infected roots and repot in sterile mix and a clean pot"
+    ],
+    "inspect_next": [
+      {
+        "item": "Check the roots and the stem near the soil line",
+        "basis": "page"
+      }
+    ],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_011",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "yellowing"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "overwatering or poor soil drainage",
+    "cause_category": "watering",
+    "summary": "The source lists overwatering or poor soil drainage as a possible cause of yellowing.",
+    "distinguishing_questions": [
+      {
+        "question": "Does the soil stay wet for days after watering?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_012",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "yellowing"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "insufficient light",
+    "cause_category": "environment",
+    "summary": "The source lists insufficient light as a possible cause of yellowing.",
+    "distinguishing_questions": [
+      {
+        "question": "Is the plant in a dim spot?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_013",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "yellowing"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "low humidity",
+    "cause_category": "environment",
+    "summary": "The source lists low humidity as a possible cause of yellowing.",
+    "distinguishing_questions": [
+      {
+        "question": "Is the air very dry (for example from heating)?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_014",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "yellowing"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "cold draft injury",
+    "cause_category": "environment",
+    "summary": "The source lists cold draft injury as a possible cause of yellowing.",
+    "distinguishing_questions": [
+      {
+        "question": "Is the plant near a cold window or draft?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_015",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "scorched_leaves"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "direct sun exposure",
+    "cause_category": "environment",
+    "summary": "The source lists direct sun exposure as a possible cause of scorched leaves.",
+    "distinguishing_questions": [
+      {
+        "question": "Does direct sun hit the leaves?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_016",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "brown_tips_edges"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "fertilizer or pesticide burn",
+    "cause_category": "nutrient",
+    "summary": "The source lists fertilizer or pesticide burn as a possible cause of brown tips or edges.",
+    "distinguishing_questions": [
+      {
+        "question": "Have you fertilized or sprayed the plant recently?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_017",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "brown_tips_edges"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "soft water",
+    "cause_category": "environment",
+    "summary": "The source lists soft water as a possible cause of brown tips or edges.",
+    "distinguishing_questions": [
+      {
+        "question": "Do you water with softened water?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_018",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "brown_tips_edges"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "soil staying dry for long periods",
+    "cause_category": "watering",
+    "summary": "The source lists soil staying dry for long periods as a possible cause of brown tips or edges.",
+    "distinguishing_questions": [
+      {
+        "question": "Does the soil dry out completely for long stretches?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_019",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "brown_tips_edges"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "low temperature",
+    "cause_category": "environment",
+    "summary": "The source lists low temperature as a possible cause of brown tips or edges.",
+    "distinguishing_questions": [
+      {
+        "question": "Has the plant been exposed to cold?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_020",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "small_leaves",
+      "wilting_drooping"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "soil alternating between too wet and too dry",
+    "cause_category": "watering",
+    "summary": "The source lists soil alternating between too wet and too dry as a possible cause of small leaves / wilting or drooping.",
+    "distinguishing_questions": [
+      {
+        "question": "Does the soil swing between soggy and very dry?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_021",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "stunted_growth"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "incorrect lighting (source says 'weak growth')",
+    "cause_category": "environment",
+    "summary": "The source lists incorrect lighting (source says 'weak growth') as a possible cause of stunted growth.",
+    "distinguishing_questions": [
+      {
+        "question": "Is the plant getting the light level it needs?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_022",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "stunted_growth"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "root damage from excessive moisture (source says 'weak growth')",
+    "cause_category": "watering",
+    "summary": "The source lists root damage from excessive moisture (source says 'weak growth') as a possible cause of stunted growth.",
+    "distinguishing_questions": [
+      {
+        "question": "Does the soil stay wet, or do the roots look damaged?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_023",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "leggy_stretched"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "insufficient or poor light (source says 'spindly')",
+    "cause_category": "environment",
+    "summary": "The source lists insufficient or poor light (source says 'spindly') as a possible cause of leggy or stretched.",
+    "distinguishing_questions": [
+      {
+        "question": "Is the plant stretching toward a light source?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_024",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "leaf_drop"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "overwatering (source says 'general defoliation')",
+    "cause_category": "watering",
+    "summary": "The source lists overwatering (source says 'general defoliation') as a possible cause of leaf drop.",
+    "distinguishing_questions": [
+      {
+        "question": "Does the soil stay wet for days after watering?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_025",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "leaf_drop"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "poor lighting (source says 'general defoliation')",
+    "cause_category": "environment",
+    "summary": "The source lists poor lighting (source says 'general defoliation') as a possible cause of leaf drop.",
+    "distinguishing_questions": [
+      {
+        "question": "Is the plant getting enough light?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_026",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "leaf_drop"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "cold injury (source says 'general defoliation')",
+    "cause_category": "environment",
+    "summary": "The source lists cold injury (source says 'general defoliation') as a possible cause of leaf drop.",
+    "distinguishing_questions": [
+      {
+        "question": "Has the plant been exposed to cold?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_psu_houseplant_problems",
+    "source_url": "https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_027",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "brown_tips_edges"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "low humidity",
+    "cause_category": "environment",
+    "summary": "The source gives low humidity as an example cause of brown leaf tips and notes several factors often combine, so all contributing factors should be addressed.",
+    "distinguishing_questions": [
+      {
+        "question": "Is the air dry?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "Source says multiple factors often combine.",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_isu_diagnosing",
+    "source_url": "https://yardandgarden.extension.iastate.edu/how-to/diagnosing-houseplant-problems",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_028",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "brown_tips_edges"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "over-fertilizing",
+    "cause_category": "nutrient",
+    "summary": "The source gives over-fertilizing as an example cause of brown leaf tips and notes several factors often combine, so all contributing factors should be addressed.",
+    "distinguishing_questions": [
+      {
+        "question": "Have you fertilized heavily or recently?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "Source says multiple factors often combine.",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_isu_diagnosing",
+    "source_url": "https://yardandgarden.extension.iastate.edu/how-to/diagnosing-houseplant-problems",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_029",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "soil",
+      "leaf"
+    ],
+    "symptoms": [
+      "visible_insects"
+    ],
+    "symptoms_stated": false,
+    "location_patterns": [],
+    "cause": "Fungus gnats from wet soil",
+    "cause_category": "watering",
+    "summary": "The source links fungus gnats to wet soil and says treating the insects with insecticide won't help unless the wet soil is fixed.",
+    "distinguishing_questions": [
+      {
+        "question": "Is the soil staying wet?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [
+      "Address the wet soil that is attracting the gnats"
+    ],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "Page gives no symptoms for gnats beyond the name.",
+    "source_id": "src_isu_diagnosing",
+    "source_url": "https://yardandgarden.extension.iastate.edu/how-to/diagnosing-houseplant-problems",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_030",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "whole_plant"
+    ],
+    "symptoms": [],
+    "symptoms_stated": false,
+    "location_patterns": [],
+    "cause": "Over-fertilizing",
+    "cause_category": "nutrient",
+    "summary": "The source says extra fertilizer when the plant is not actively growing can cause severe damage or plant death.",
+    "distinguishing_questions": [
+      {
+        "question": "Have you fertilized in winter or more than the label says?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [
+      "Fertilize only during active growth (March to September in the source)",
+      "Use a water-soluble fertilizer as the package directs",
+      "Avoid fertilizing in winter"
+    ],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "Source is a Midwest US guide; seasons may not fit other regions.",
+    "source_id": "src_illinois_houseplants",
+    "source_url": "https://extension.illinois.edu/sites/default/files/hkmw-_houseplants.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_031",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "whole_plant"
+    ],
+    "symptoms": [
+      "scorched_leaves"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "Cold or heat from window placement",
+    "cause_category": "environment",
+    "summary": "The source says windows can expose plants to cold in winter and scorching heat in summer.",
+    "distinguishing_questions": [
+      {
+        "question": "Does the plant sit right against a window?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [
+      "Keep plants from touching the window glass",
+      "Rotate plants about quarterly for even growth"
+    ],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_illinois_houseplants",
+    "source_url": "https://extension.illinois.edu/sites/default/files/hkmw-_houseplants.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_032",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "roots"
+    ],
+    "symptoms": [],
+    "symptoms_stated": false,
+    "location_patterns": [],
+    "cause": "Root rot from standing water",
+    "cause_category": "watering",
+    "summary": "The source says letting plants sit in standing water leads to root rot.",
+    "distinguishing_questions": [
+      {
+        "question": "Is the pot sitting in water?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [
+      "Make sure the pot drains",
+      "Use a pebble tray so the pot does not sit in water"
+    ],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_illinois_houseplants",
+    "source_url": "https://extension.illinois.edu/sites/default/files/hkmw-_houseplants.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_033",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "roots"
+    ],
+    "symptoms": [],
+    "symptoms_stated": false,
+    "location_patterns": [],
+    "cause": "Root burn from salt buildup",
+    "cause_category": "nutrient",
+    "summary": "The source says excess salts building up in the soil can burn roots.",
+    "distinguishing_questions": [],
+    "next_actions": [
+      "When watering, let water run out through the bottom of the pot"
+    ],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_illinois_houseplants",
+    "source_url": "https://extension.illinois.edu/sites/default/files/hkmw-_houseplants.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_034",
+    "kind": "problem",
+    "plants": [],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "whole_plant"
+    ],
+    "symptoms": [],
+    "symptoms_stated": false,
+    "location_patterns": [],
+    "cause": "Low winter humidity from furnace heating",
+    "cause_category": "environment",
+    "summary": "The source says furnace operation lowers indoor humidity in winter.",
+    "distinguishing_questions": [],
+    "next_actions": [
+      "Use a humidifier",
+      "Group plants together",
+      "Use shallow water trays or pebble trays nearby",
+      "Mist plants"
+    ],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "Page names no symptoms for low humidity.",
+    "source_id": "src_illinois_houseplants",
+    "source_url": "https://extension.illinois.edu/sites/default/files/hkmw-_houseplants.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_035",
+    "kind": "problem",
+    "plants": [
+      "jade"
+    ],
+    "plant_groups": [
+      "succulent",
+      "houseplant"
+    ],
+    "plant_parts": [
+      "roots"
+    ],
+    "symptoms": [],
+    "symptoms_stated": false,
+    "location_patterns": [],
+    "cause": "Root rot from poor drainage or too-frequent watering",
+    "cause_category": "watering",
+    "summary": "Root rot comes from soil that does not drain quickly or from watering too often.",
+    "distinguishing_questions": [
+      {
+        "question": "Does water drain slowly, or do you water very often?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [
+      "Use a well-drained soil mix (cactus mix with organic matter, or sterilized organic soil with peat moss and coarse sand)"
+    ],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "Page names no visible symptoms for root rot.",
+    "source_id": "src_clemson_jade",
+    "source_url": "https://hgic.clemson.edu/factsheet/jade-plant/",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_036",
+    "kind": "problem",
+    "plants": [
+      "jade"
+    ],
+    "plant_groups": [
+      "succulent",
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "leaf_drop"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "Plant allowed to become extremely dry",
+    "cause_category": "watering",
+    "summary": "Jade plants drop leaves when allowed to get extremely dry.",
+    "distinguishing_questions": [
+      {
+        "question": "Has the soil been completely dry for a long time?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [
+      "Keep watering appropriately consistent"
+    ],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_clemson_jade",
+    "source_url": "https://hgic.clemson.edu/factsheet/jade-plant/",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_037",
+    "kind": "problem",
+    "plants": [
+      "jade"
+    ],
+    "plant_groups": [
+      "succulent",
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf",
+      "stem"
+    ],
+    "symptoms": [
+      "visible_insects"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "Mealybugs",
+    "cause_category": "pest",
+    "summary": "Mealybugs look like white puffs of cotton and are the most common insect pest on jade.",
+    "distinguishing_questions": [
+      {
+        "question": "Do you see white cotton-like puffs on the plant?",
+        "basis": "page"
+      }
+    ],
+    "next_actions": [
+      "Wipe them off with alcohol on a cotton swab"
+    ],
+    "inspect_next": [
+      {
+        "item": "Check stems and leaf joints for white puffs",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "caveats": "Source cautions that insecticidal soap may damage jade plants.",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_clemson_jade",
+    "source_url": "https://hgic.clemson.edu/factsheet/jade-plant/",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_038",
+    "kind": "problem",
+    "plants": [
+      "jade"
+    ],
+    "plant_groups": [
+      "succulent",
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "faded_color",
+      "stippling"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "Spider mites",
+    "cause_category": "pest",
+    "summary": "Jade plants with spider mites lose green color and look dusty or speckled.",
+    "distinguishing_questions": [
+      {
+        "question": "Do the leaves look dusty or speckled, and have they lost color?",
+        "basis": "page"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "Page gives no management for spider mites.",
+    "source_id": "src_clemson_jade",
+    "source_url": "https://hgic.clemson.edu/factsheet/jade-plant/",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_039",
+    "kind": "problem",
+    "plants": [
+      "jade"
+    ],
+    "plant_groups": [
+      "succulent",
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "brown_spots",
+      "leaf_drop",
+      "stunted_growth"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "Too little light or water, or wrong temperature/drafts",
+    "cause_category": "environment",
+    "summary": "One read of the page said insufficient light or water causes dwarfing, spotting and leaf drop, and that wrong temperatures or drafts cause problems.",
+    "distinguishing_questions": [],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": true,
+    "review_notes": "This appeared in only one of two reads of the page. Check the page before approving.",
+    "source_id": "src_clemson_jade",
+    "source_url": "https://hgic.clemson.edu/factsheet/jade-plant/",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_040",
+    "kind": "plant_profile",
+    "plants": [
+      "jade"
+    ],
+    "plant_groups": [
+      "succulent",
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf",
+      "stem"
+    ],
+    "symptoms": [],
+    "symptoms_stated": false,
+    "location_patterns": [],
+    "cause": null,
+    "cause_category": null,
+    "summary": "Normal appearance: fleshy, glossy round or oval leaves in dark green, blue-gray or edged in red, on stout brown stems.",
+    "distinguishing_questions": [],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_clemson_jade",
+    "source_url": "https://hgic.clemson.edu/factsheet/jade-plant/",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_041",
+    "kind": "problem",
+    "plants": [
+      "pothos"
+    ],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "roots"
+    ],
+    "symptoms": [],
+    "symptoms_stated": false,
+    "location_patterns": [],
+    "cause": "Root rot from overwatering or poorly draining soil",
+    "cause_category": "watering",
+    "summary": "Root rot is a common houseplant problem caused by overwatering or poorly draining soil.",
+    "distinguishing_questions": [
+      {
+        "question": "Does the soil stay wet for days?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [
+      "Use a well-draining soil mix",
+      "Water properly"
+    ],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "Page names no visible symptoms.",
+    "source_id": "src_clemson_pothos",
+    "source_url": "https://hgic.clemson.edu/factsheet/how-to-grow-pothos-indoors-epipremnum-spp-care-cultivars-and-common-problems/",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_042",
+    "kind": "problem",
+    "plants": [
+      "pothos"
+    ],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "yellowing"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "Overwatering",
+    "cause_category": "watering",
+    "summary": "The source says yellow pothos leaves are often caused by overwatering.",
+    "distinguishing_questions": [
+      {
+        "question": "Does the soil stay wet for days after watering?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_clemson_pothos",
+    "source_url": "https://hgic.clemson.edu/factsheet/how-to-grow-pothos-indoors-epipremnum-spp-care-cultivars-and-common-problems/",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_043",
+    "kind": "problem",
+    "plants": [
+      "pothos"
+    ],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "yellowing"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "Low fertility",
+    "cause_category": "nutrient",
+    "summary": "The source says yellow pothos leaves can come from low fertility.",
+    "distinguishing_questions": [
+      {
+        "question": "Has the plant been fertilized recently?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [
+      "Use a houseplant fertilizer about every other month in spring and summer"
+    ],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_clemson_pothos",
+    "source_url": "https://hgic.clemson.edu/factsheet/how-to-grow-pothos-indoors-epipremnum-spp-care-cultivars-and-common-problems/",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_044",
+    "kind": "problem",
+    "plants": [
+      "pothos"
+    ],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "scorched_leaves",
+      "brown_tips_edges"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "low humidity",
+    "cause_category": "environment",
+    "summary": "The source says scorched leaves and dying tips on pothos are often caused by low humidity.",
+    "distinguishing_questions": [
+      {
+        "question": "Is the air dry?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [
+      "Give bright, indirect light",
+      "Keep humidity higher"
+    ],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_clemson_pothos",
+    "source_url": "https://hgic.clemson.edu/factsheet/how-to-grow-pothos-indoors-epipremnum-spp-care-cultivars-and-common-problems/",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_045",
+    "kind": "problem",
+    "plants": [
+      "pothos"
+    ],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "scorched_leaves",
+      "brown_tips_edges"
+    ],
+    "symptoms_stated": true,
+    "location_patterns": [],
+    "cause": "intense light",
+    "cause_category": "environment",
+    "summary": "The source says scorched leaves and dying tips on pothos are often caused by intense light.",
+    "distinguishing_questions": [
+      {
+        "question": "Does strong direct light reach the leaves?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [
+      "Give bright, indirect light",
+      "Keep humidity higher"
+    ],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_clemson_pothos",
+    "source_url": "https://hgic.clemson.edu/factsheet/how-to-grow-pothos-indoors-epipremnum-spp-care-cultivars-and-common-problems/",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_046",
+    "kind": "problem",
+    "plants": [
+      "pothos"
+    ],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [],
+    "symptoms_stated": false,
+    "location_patterns": [],
+    "cause": "Spider mites or mealybugs",
+    "cause_category": "pest",
+    "summary": "The source names spider mites and mealybugs as possible pests but says pothos is generally pest-free indoors.",
+    "distinguishing_questions": [],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": true,
+    "review_notes": "Thin: no symptoms or management given on the page (it refers to another publication).",
+    "source_id": "src_clemson_pothos",
+    "source_url": "https://hgic.clemson.edu/factsheet/how-to-grow-pothos-indoors-epipremnum-spp-care-cultivars-and-common-problems/",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_047",
+    "kind": "plant_profile",
+    "plants": [
+      "pothos"
+    ],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [],
+    "symptoms_stated": false,
+    "location_patterns": [],
+    "cause": null,
+    "cause_category": null,
+    "summary": "Normal appearance: slightly heart-shaped, shiny leaves a few inches long that stay whole; vines give a bushy look.",
+    "distinguishing_questions": [],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_clemson_pothos",
+    "source_url": "https://hgic.clemson.edu/factsheet/how-to-grow-pothos-indoors-epipremnum-spp-care-cultivars-and-common-problems/",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_048",
+    "kind": "problem",
+    "plants": [
+      "snake_plant"
+    ],
+    "plant_groups": [
+      "succulent",
+      "houseplant"
+    ],
+    "plant_parts": [
+      "roots"
+    ],
+    "symptoms": [],
+    "symptoms_stated": false,
+    "location_patterns": [],
+    "cause": "Root rot from overwatering",
+    "cause_category": "watering",
+    "summary": "The source calls root rot a common problem for snake plants, caused by overwatering.",
+    "distinguishing_questions": [
+      {
+        "question": "Do you water before the soil has dried out?",
+        "basis": "derived_from_cause"
+      }
+    ],
+    "next_actions": [
+      "Water only when the soil is dry",
+      "Use a well-drained cactus mix or soil with perlite",
+      "Use a pot with drainage holes"
+    ],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "Page names no visible symptoms.",
+    "source_id": "src_psu_snake_plant",
+    "source_url": "https://extension.psu.edu/snake-plant-a-forgiving-low-maintenance-houseplant",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_049",
+    "kind": "problem",
+    "plants": [
+      "snake_plant"
+    ],
+    "plant_groups": [
+      "succulent",
+      "houseplant"
+    ],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [],
+    "symptoms_stated": false,
+    "location_patterns": [],
+    "cause": "Mealybugs or spider mites",
+    "cause_category": "pest",
+    "summary": "The source mentions mealybugs and spider mites as pests but gives no symptoms or control steps.",
+    "distinguishing_questions": [],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": true,
+    "review_notes": "Thin mention only.",
+    "source_id": "src_psu_snake_plant",
+    "source_url": "https://extension.psu.edu/snake-plant-a-forgiving-low-maintenance-houseplant",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_050",
+    "kind": "plant_profile",
+    "plants": [
+      "snake_plant"
+    ],
+    "plant_groups": [
+      "succulent",
+      "houseplant"
+    ],
+    "plant_parts": [
+      "whole_plant"
+    ],
+    "symptoms": [],
+    "symptoms_stated": false,
+    "location_patterns": [],
+    "cause": null,
+    "cause_category": null,
+    "summary": "The source describes it as a long-lived, unfussy succulent houseplant that tolerates low light.",
+    "distinguishing_questions": [],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "",
+    "source_id": "src_psu_snake_plant",
+    "source_url": "https://extension.psu.edu/snake-plant-a-forgiving-low-maintenance-houseplant",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_051",
+    "kind": "plant_profile",
+    "plants": [
+      "pothos"
+    ],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "whole_plant"
+    ],
+    "symptoms": [],
+    "symptoms_stated": false,
+    "location_patterns": [],
+    "cause": null,
+    "cause_category": null,
+    "summary": "The source lists this plant under low light.",
+    "distinguishing_questions": [],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "Light need only; the page gives no problems for this plant.",
+    "source_id": "src_illinois_houseplants",
+    "source_url": "https://extension.illinois.edu/sites/default/files/hkmw-_houseplants.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_052",
+    "kind": "plant_profile",
+    "plants": [
+      "chinese_evergreen"
+    ],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "whole_plant"
+    ],
+    "symptoms": [],
+    "symptoms_stated": false,
+    "location_patterns": [],
+    "cause": null,
+    "cause_category": null,
+    "summary": "The source lists this plant under low light.",
+    "distinguishing_questions": [],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "Light need only; the page gives no problems for this plant.",
+    "source_id": "src_illinois_houseplants",
+    "source_url": "https://extension.illinois.edu/sites/default/files/hkmw-_houseplants.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_053",
+    "kind": "plant_profile",
+    "plants": [
+      "snake_plant"
+    ],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "whole_plant"
+    ],
+    "symptoms": [],
+    "symptoms_stated": false,
+    "location_patterns": [],
+    "cause": null,
+    "cause_category": null,
+    "summary": "The source lists this plant under low light.",
+    "distinguishing_questions": [],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "Light need only; the page gives no problems for this plant.",
+    "source_id": "src_illinois_houseplants",
+    "source_url": "https://extension.illinois.edu/sites/default/files/hkmw-_houseplants.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_054",
+    "kind": "plant_profile",
+    "plants": [
+      "spider_plant"
+    ],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "whole_plant"
+    ],
+    "symptoms": [],
+    "symptoms_stated": false,
+    "location_patterns": [],
+    "cause": null,
+    "cause_category": null,
+    "summary": "The source lists this plant under medium light.",
+    "distinguishing_questions": [],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "Light need only; the page gives no problems for this plant.",
+    "source_id": "src_illinois_houseplants",
+    "source_url": "https://extension.illinois.edu/sites/default/files/hkmw-_houseplants.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_055",
+    "kind": "plant_profile",
+    "plants": [
+      "peace_lily"
+    ],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "whole_plant"
+    ],
+    "symptoms": [],
+    "symptoms_stated": false,
+    "location_patterns": [],
+    "cause": null,
+    "cause_category": null,
+    "summary": "The source lists this plant under medium light. It prefers consistently moist soil and does not like to dry out.",
+    "distinguishing_questions": [],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "Light need only; the page gives no problems for this plant.",
+    "source_id": "src_illinois_houseplants",
+    "source_url": "https://extension.illinois.edu/sites/default/files/hkmw-_houseplants.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_056",
+    "kind": "plant_profile",
+    "plants": [
+      "african_violet"
+    ],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "whole_plant"
+    ],
+    "symptoms": [],
+    "symptoms_stated": false,
+    "location_patterns": [],
+    "cause": null,
+    "cause_category": null,
+    "summary": "The source lists this plant under medium light.",
+    "distinguishing_questions": [],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "Light need only; the page gives no problems for this plant.",
+    "source_id": "src_illinois_houseplants",
+    "source_url": "https://extension.illinois.edu/sites/default/files/hkmw-_houseplants.pdf",
+    "status": "draft"
+  },
+  {
+    "record_id": "rec_057",
+    "kind": "plant_profile",
+    "plants": [
+      "aloe_vera"
+    ],
+    "plant_groups": [
+      "houseplant"
+    ],
+    "plant_parts": [
+      "whole_plant"
+    ],
+    "symptoms": [],
+    "symptoms_stated": false,
+    "location_patterns": [],
+    "cause": null,
+    "cause_category": null,
+    "summary": "The source lists this plant under high light.",
+    "distinguishing_questions": [],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": "",
+    "unsure": false,
+    "review_notes": "Light need only; the page gives no problems for this plant.",
+    "source_id": "src_illinois_houseplants",
+    "source_url": "https://extension.illinois.edu/sites/default/files/hkmw-_houseplants.pdf",
+    "status": "draft"
+  }
+]

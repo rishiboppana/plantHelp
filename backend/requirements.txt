@@ -1,0 +1,8 @@
+fastapi==0.110.3
+uvicorn[standard]
+httpx
+python-multipart
+pyyaml
+jsonschema
+certifi
+sentence-transformers

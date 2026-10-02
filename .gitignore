@@ -1,0 +1,7 @@
+kb/index/
+backend/.venv/
+backend/uploads/
+backend/plantlens.db
+frontend/node_modules/
+frontend/dist/
+.env

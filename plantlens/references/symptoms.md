@@ -1,37 +1,46 @@
-# Symptom vocabulary (provisional)
+# Symptom vocabulary
 
-Use these ids in the observation object and these terms when describing what you see. The knowledge base uses the same words, which is what makes retrieval work.
-
-> This list is a starting point. Once the knowledge base exists, replace it with the contents of `kb/vocab/symptoms.yaml` so the model and the index share a single source of truth.
+GENERATED from `kb/vocab/symptoms.yaml` by `python -m src.gen_skill_vocab`. Do not edit by hand; edit the yaml and regenerate. The knowledge base uses the same ids, which is what makes retrieval work.
 
 ## Plant parts
-`leaf`, `stem`, `fruit`, `flower`, `whole_plant`, `roots`, `soil`
+`leaf`, `stem`, `flower`, `fruit`, `root`, `soil`, `whole_plant`
 
 ## Symptoms
 
 | id | What it looks like | Lay wording users may use |
 |---|---|---|
-| `yellowing` | Leaf turns yellow, whole leaf or between veins | "yellow leaves", "pale leaves" |
-| `brown_spots` | Brown spots or patches on leaves | "brown dots", "spotty leaves" |
-| `black_spots` | Dark or black spots, sometimes with a yellow ring | "black patches" |
-| `brown_tips_edges` | Brown, dry tips or leaf edges | "crispy tips", "burnt edges" |
-| `curling` | Leaves curl, cup, or twist | "curled leaves" |
-| `wilting_drooping` | Leaves or stems limp and drooping | "droopy", "wilted" |
-| `holes_chewed` | Holes or chewed edges | "leaves eaten", "bitten" |
-| `stippling` | Tiny pale dots across the leaf surface | "speckled leaves" |
-| `white_powdery_coating` | White powder-like film on leaves or stems | "white dust" |
-| `fuzzy_mold_growth` | Fuzzy or mold-like growth on leaves, stems, or soil | "mold", "fuzz" |
-| `sticky_residue` | Sticky, shiny film on leaves | "sticky leaves" |
-| `webbing` | Fine webbing on leaves or between stems | "cobwebs" |
-| `visible_insects` | Insects or insect-like bumps visible | "bugs", "white fluff" |
-| `leaf_drop` | Leaves falling off | "dropping leaves" |
-| `stunted_growth` | Little or no new growth, small new leaves | "not growing" |
-| `leggy_stretched` | Long, stretched stems with wide gaps between leaves | "leggy", "reaching" |
-| `soft_mushy_stem` | Soft, dark, or mushy stem or base | "rotting" |
-| `faded_color` | Overall washed-out color, loss of normal pattern | "losing color" |
+| `yellowing` | Yellowing leaves | "yellow leaves", "pale leaves", "chlorosis" |
+| `browning` | Browning leaves | "brown leaves", "brown tips", "brown edges" |
+| `brown_spots` | Brown or dark spots | "leaf spots", "dark spots", "blotches" |
+| `blackening` | Blackened tissue | "black leaves", "black stems", "blackening" |
+| `bleaching` | Bleached or whitened leaves | "white patches", "washed out", "faded" |
+| `stippling` | Fine stippling | "tiny dots", "speckled leaves", "pin-prick dots" |
+| `mottling` | Mottled pattern | "mosaic", "patchy color", "uneven color" |
+| `wilting` | Wilting or drooping | "drooping", "limp leaves", "sagging" |
+| `leaf_curl` | Curling leaves | "curled leaves", "rolled leaves", "cupping" |
+| `distorted_growth` | Distorted or stunted growth | "stunted", "deformed", "twisted new growth" |
+| `leaf_drop` | Leaf drop | "falling leaves", "dropping leaves", "shedding" |
+| `spindly_growth` | Spindly or leggy growth | "leggy", "stretched", "etiolated" |
+| `holes_chewing` | Holes or chewed leaves | "chewed edges", "holes in leaves", "eaten leaves" |
+| `powdery_coating` | White powdery coating | "white powder", "powdery mildew look", "dusty white film" |
+| `fuzzy_mold` | Fuzzy mold growth | "gray fuzz", "mold", "fuzzy growth" |
+| `white_fluff` | White cottony or waxy fluff | "cottony masses", "white wax", "white fuzz on stems" |
+| `sticky_residue` | Sticky residue | "honeydew", "sticky leaves", "shiny sticky film" |
+| `visible_insects` | Visible insects | "bugs", "aphids", "flying insects" |
+| `webbing` | Fine webbing | "cobwebs", "silk threads", "web on leaves" |
+| `bumps_scale` | Bumps on stems or leaves | "scale", "brown bumps", "shells on stem" |
+| `soft_stem_base` | Soft or mushy stem base | "mushy stem", "rotting base", "stem rot" |
+| `soil_wet` | Soil staying wet | "soggy soil", "waterlogged", "never dries" |
+| `soil_dry` | Soil very dry | "bone dry", "pulling from pot edge", "hard soil" |
+| `soil_crust` | Crust or deposits on soil | "white crust", "salt buildup", "mineral crust" |
+| `few_flowers` | Few or no flowers | "not blooming", "no blooms", "flower drop" |
+| `water_soaked_spots` | Water-soaked or oily spots | "greasy spots", "oily spots", "translucent spots" |
+| `dark_soft_roots` | Dark or soft roots | "brown roots", "black roots", "rotted roots" |
+| `sooty_mold` | Black sooty coating | "black film", "sooty mold", "black residue on leaves" |
+| `dry_brown_patch` | Large dry brown patch | "big brown patch", "crispy patch", "papery brown area" |
 
 ## Location patterns
-`lower_leaves_first`, `new_growth_first`, `leaf_edges`, `between_veins`, `one_side_only`, `whole_plant`, `scattered`
+`lower_leaves_first`, `new_growth`, `leaf_edges`, `between_veins`, `one_side`, `whole_plant`, `undersides`
 
 ## Extent
 `few_leaves`, `many_leaves`, `whole_plant`

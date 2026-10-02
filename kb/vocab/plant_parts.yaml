@@ -1,0 +1,8 @@
+plant_parts:
+  - {id: leaf, label: Leaf}
+  - {id: stem, label: Stem}
+  - {id: flower, label: Flower}
+  - {id: fruit, label: Fruit}
+  - {id: root, label: Root}
+  - {id: soil, label: Soil}
+  - {id: whole_plant, label: Whole plant}

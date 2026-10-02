@@ -1,0 +1,78 @@
+- source_id: src_clemson_jade
+  title: Jade Plant
+  publisher: Clemson Cooperative Extension, Home & Garden Information Center
+  url: https://hgic.clemson.edu/factsheet/jade-plant/
+  date: Revised 2015-10-16
+  notes: Page says recommendations are for South Carolina conditions. Two reads of
+    the page differed slightly (see unsure records).
+  license: No explicit reuse or license statement found on the page (university copyright
+    notice only).
+  redistributable: unknown
+  policy: Store short paraphrased facts plus URL only. Do not store page text. Get
+    permission before public release.
+  date_accessed: '2026-10-02'
+- source_id: src_clemson_pothos
+  title: 'How to Grow Pothos Indoors (Epipremnum spp.): Care, Cultivars, and Common
+    Problems'
+  publisher: Clemson Cooperative Extension, Home & Garden Information Center
+  url: https://hgic.clemson.edu/factsheet/how-to-grow-pothos-indoors-epipremnum-spp-care-cultivars-and-common-problems/
+  date: Published 2026-01-30 (as shown on page)
+  notes: South Carolina conditions.
+  license: No explicit reuse or license statement found on the page (university copyright
+    notice only).
+  redistributable: unknown
+  policy: Store short paraphrased facts plus URL only. Do not store page text. Get
+    permission before public release.
+  date_accessed: '2026-10-02'
+- source_id: src_psu_snake_plant
+  title: 'Snake Plant: A Forgiving, Low-maintenance Houseplant'
+  publisher: Penn State Extension
+  url: https://extension.psu.edu/snake-plant-a-forgiving-low-maintenance-houseplant
+  date: Updated 2023-09-20
+  notes: ''
+  license: No explicit reuse or license statement found on the page (university copyright
+    notice only).
+  redistributable: unknown
+  policy: Store short paraphrased facts plus URL only. Do not store page text. Get
+    permission before public release.
+  date_accessed: '2026-10-02'
+- source_id: src_psu_houseplant_problems
+  title: Preventing, Diagnosing, and Correcting Common Houseplant Problems
+  publisher: Penn State Extension (College of Agricultural Sciences, Horticulture)
+  url: https://oc4h.ucanr.edu/sites/default/files/2020-07/330401.pdf
+  date: Copy read is dated 2006-08-09
+  notes: Facts were read from this mirrored PDF copy. The current Penn State page
+    is https://extension.psu.edu/preventing-diagnosing-and-correcting-common-houseplant-problems
+    (search snippet showed 'Updated March 14, 2023'); that URL did not load the expected
+    page when fetched, so the current version was NOT read directly. Cite the Penn
+    State page, but re-check wording against it.
+  license: No explicit reuse or license statement found on the page (university copyright
+    notice only).
+  redistributable: unknown
+  policy: Store short paraphrased facts plus URL only. Do not store page text. Get
+    permission before public release.
+  date_accessed: '2026-10-02'
+- source_id: src_isu_diagnosing
+  title: Diagnosing Houseplant Problems
+  publisher: Iowa State University Extension and Outreach
+  url: https://yardandgarden.extension.iastate.edu/how-to/diagnosing-houseplant-problems
+  date: Last reviewed 2024-01
+  notes: Main page is brief; it lists many pests/diseases by name with no detail.
+  license: No explicit reuse or license statement found on the page (university copyright
+    notice only).
+  redistributable: unknown
+  policy: Store short paraphrased facts plus URL only. Do not store page text. Get
+    permission before public release.
+  date_accessed: '2026-10-02'
+- source_id: src_illinois_houseplants
+  title: Houseplants (Knox County Master Gardeners)
+  publisher: University of Illinois Extension
+  url: https://extension.illinois.edu/sites/default/files/hkmw-_houseplants.pdf
+  date: 2011-01
+  notes: Short general guide; gives light needs per plant but few plant-specific problems.
+  license: No explicit reuse or license statement found on the page (university copyright
+    notice only).
+  redistributable: unknown
+  policy: Store short paraphrased facts plus URL only. Do not store page text. Get
+    permission before public release.
+  date_accessed: '2026-10-02'

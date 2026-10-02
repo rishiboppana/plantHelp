@@ -1,0 +1,30 @@
+[
+  {
+    "record_id": "rec_900099",
+    "plants": [],
+    "plant_groups": [],
+    "plant_parts": [
+      "leaf"
+    ],
+    "symptoms": [
+      "not_a_symptom"
+    ],
+    "location_patterns": [],
+    "cause": "spider mites",
+    "cause_category": "pest",
+    "summary": "UMD's guide lists fine stippling among its symptom categories, with spider mites as a cause.",
+    "distinguishing_questions": [
+      {
+        "question": "Is there fine webbing on the leaf undersides?",
+        "if_yes": "supports this cause",
+        "if_no": "weakens this cause"
+      }
+    ],
+    "next_actions": [],
+    "inspect_next": [],
+    "caveats": null,
+    "source_id": "src_nope",
+    "source_url": "https://extension.umd.edu/resource/diagnose-indoor-plant-problems",
+    "status": "draft"
+  }
+]

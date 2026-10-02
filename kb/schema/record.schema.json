@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PlantLens KB record",
+  "type": "object",
+  "required": ["record_id","plants","plant_groups","plant_parts","symptoms","cause","cause_category","summary","distinguishing_questions","next_actions","source_id","source_url","status"],
+  "additionalProperties": false,
+  "properties": {
+    "record_id": {"type": "string", "pattern": "^rec_[0-9]{6}$"},
+    "plants": {"type": "array", "items": {"type": "string"}},
+    "plant_groups": {"type": "array", "items": {"type": "string"}},
+    "plant_parts": {"type": "array", "items": {"type": "string"}},
+    "symptoms": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "location_patterns": {"type": "array", "items": {"type": "string"}},
+    "cause": {"type": "string", "minLength": 1},
+    "cause_category": {"type": "string"},
+    "summary": {"type": "string", "minLength": 1},
+    "distinguishing_questions": {"type": "array", "items": {
+      "type": "object", "required": ["question"], "additionalProperties": false,
+      "properties": {"question": {"type": "string"}, "if_yes": {"type": ["string","null"]}, "if_no": {"type": ["string","null"]}}}},
+    "next_actions": {"type": "array", "items": {"type": "string"}},
+    "inspect_next": {"type": "array", "items": {"type": "string"}},
+    "caveats": {"type": ["string","null"]},
+    "source_id": {"type": "string"},
+    "source_url": {"type": "string", "pattern": "^https?://"},
+    "status": {"enum": ["draft","reviewed"]},
+    "unmapped_terms": {"type": "array", "items": {"type": "string"}}
+  }
+}

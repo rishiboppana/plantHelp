@@ -1,0 +1,4 @@
+Unmapped terms report (batch 1)
+No unmapped_terms were needed. Added 3 vocab symptoms during extraction: water_soaked_spots, dark_soft_roots, sooty_mold.
+Known gaps not mapped: silvery-gray leaf damage (thrips), bronzing (spider mites), black fecal dots (thrips/fungus gnats), oily/greasy spots covered by water_soaked_spots.
+Plant-specific records: none; all 29 records are generic (plants/plant_groups empty) because the sources are general houseplant guides.

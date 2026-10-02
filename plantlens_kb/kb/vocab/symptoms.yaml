@@ -1,0 +1,118 @@
+- id: yellowing
+  label: Yellowing
+  synonyms:
+  - yellow leaves
+  - pale leaves
+  - chlorosis
+- id: brown_spots
+  label: Brown spots
+  synonyms:
+  - brown dots
+  - spotty leaves
+  - leaf spots
+- id: black_spots
+  label: Black spots
+  synonyms:
+  - black patches
+  - dark spots
+- id: brown_tips_edges
+  label: Brown tips or edges
+  synonyms:
+  - crispy tips
+  - burnt edges
+  - tip dieback
+- id: dry_brown_patch
+  label: Large dry brown patch
+  synonyms:
+  - big brown dead area
+  - crispy patch
+  - dead patch on leaf
+- id: curling
+  label: Curling
+  synonyms:
+  - curled leaves
+  - cupped leaves
+- id: wilting_drooping
+  label: Wilting or drooping
+  synonyms:
+  - droopy
+  - wilted
+  - limp
+- id: holes_chewed
+  label: Holes or chewed edges
+  synonyms:
+  - leaves eaten
+  - bitten
+- id: stippling
+  label: Stippling
+  synonyms:
+  - speckled leaves
+  - tiny pale dots
+  - dusty look
+- id: white_powdery_coating
+  label: White powdery coating
+  synonyms:
+  - white dust
+  - powdery film
+- id: fuzzy_mold_growth
+  label: Fuzzy or mold-like growth
+  synonyms:
+  - mold
+  - fuzz
+- id: sticky_residue
+  label: Sticky residue
+  synonyms:
+  - sticky leaves
+  - shiny film
+- id: webbing
+  label: Webbing
+  synonyms:
+  - cobwebs
+  - fine webs
+- id: visible_insects
+  label: Visible insects
+  synonyms:
+  - bugs
+  - white fluff
+  - cottony bits
+- id: leaf_drop
+  label: Leaf drop
+  synonyms:
+  - dropping leaves
+  - leaves falling off
+- id: stunted_growth
+  label: Stunted growth
+  synonyms:
+  - not growing
+  - weak growth
+  - poor growth
+- id: leggy_stretched
+  label: Leggy or stretched
+  synonyms:
+  - spindly
+  - reaching
+  - long gaps between leaves
+- id: soft_mushy_stem
+  label: Soft or mushy stem
+  synonyms:
+  - rotting
+  - dark soft base
+- id: faded_color
+  label: Faded color
+  synonyms:
+  - losing color
+  - washed-out
+  - pale
+- id: distorted_growth
+  label: Distorted growth
+  synonyms:
+  - twisted or misshapen leaves or flowers
+- id: scorched_leaves
+  label: Scorched leaves
+  synonyms:
+  - sun-burned
+  - bleached or burnt patches
+- id: small_leaves
+  label: Small leaves
+  synonyms:
+  - undersized leaves

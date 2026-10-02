@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PlantLens KB record",
+  "type": "object",
+  "required": [
+    "record_id",
+    "kind",
+    "plants",
+    "plant_groups",
+    "plant_parts",
+    "symptoms",
+    "symptoms_stated",
+    "cause",
+    "cause_category",
+    "summary",
+    "distinguishing_questions",
+    "next_actions",
+    "inspect_next",
+    "unsure",
+    "source_id",
+    "source_url",
+    "status"
+  ],
+  "properties": {
+    "record_id": {
+      "type": "string",
+      "pattern": "^rec_[0-9]{3,}$"
+    },
+    "kind": {
+      "enum": [
+        "problem",
+        "plant_profile"
+      ]
+    },
+    "plants": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "plant_groups": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "plant_parts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "symptoms": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "symptoms_stated": {
+      "type": "boolean",
+      "description": "False when the source page gives no symptoms for this problem."
+    },
+    "location_patterns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "cause": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "cause_category": {
+      "enum": [
+        "watering",
+        "nutrient",
+        "pest",
+        "disease",
+        "environment",
+        null
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 10,
+      "description": "Own words, 1-3 sentences, only what the source states."
+    },
+    "distinguishing_questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "question",
+          "basis"
+        ],
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "basis": {
+            "enum": [
+              "page",
+              "derived_from_cause"
+            ]
+          }
+        }
+      }
+    },
+    "next_actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "inspect_next": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "item",
+          "basis"
+        ],
+        "properties": {
+          "item": {
+            "type": "string"
+          },
+          "basis": {
+            "enum": [
+              "page",
+              "derived_from_cause"
+            ]
+          }
+        }
+      }
+    },
+    "caveats": {
+      "type": "string"
+    },
+    "unsure": {
+      "type": "boolean"
+    },
+    "review_notes": {
+      "type": "string"
+    },
+    "source_id": {
+      "type": "string"
+    },
+    "source_url": {
+      "type": "string",
+      "pattern": "^https?://"
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "reviewed"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

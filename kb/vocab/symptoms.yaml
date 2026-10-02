@@ -1,0 +1,40 @@
+# Single source of truth for symptom ids. The VLM observation schema must reuse these ids.
+symptoms:
+  - {id: yellowing, label: Yellowing leaves, synonyms: [yellow leaves, pale leaves, chlorosis, fading color]}
+  - {id: browning, label: Browning leaves, synonyms: [brown leaves, brown tips, brown edges, crispy leaves, leaf scorch]}
+  - {id: brown_spots, label: Brown or dark spots, synonyms: [leaf spots, dark spots, blotches, lesions]}
+  - {id: blackening, label: Blackened tissue, synonyms: [black leaves, black stems, blackening, necrosis]}
+  - {id: bleaching, label: Bleached or whitened leaves, synonyms: [white patches, washed out, faded, sunburn]}
+  - {id: stippling, label: Fine stippling, synonyms: [tiny dots, speckled leaves, pin-prick dots]}
+  - {id: mottling, label: Mottled pattern, synonyms: [mosaic, patchy color, uneven color]}
+  - {id: wilting, label: Wilting or drooping, synonyms: [drooping, limp leaves, sagging, collapsed]}
+  - {id: leaf_curl, label: Curling leaves, synonyms: [curled leaves, rolled leaves, cupping]}
+  - {id: distorted_growth, label: Distorted or stunted growth, synonyms: [stunted, deformed, twisted new growth, misshapen]}
+  - {id: leaf_drop, label: Leaf drop, synonyms: [falling leaves, dropping leaves, shedding]}
+  - {id: spindly_growth, label: Spindly or leggy growth, synonyms: [leggy, stretched, etiolated, long thin stems]}
+  - {id: holes_chewing, label: Holes or chewed leaves, synonyms: [chewed edges, holes in leaves, eaten leaves]}
+  - {id: powdery_coating, label: White powdery coating, synonyms: [white powder, powdery mildew look, dusty white film]}
+  - {id: fuzzy_mold, label: Fuzzy mold growth, synonyms: [gray fuzz, mold, fuzzy growth, fluffy mold]}
+  - {id: white_fluff, label: White cottony or waxy fluff, synonyms: [cottony masses, white wax, white fuzz on stems]}
+  - {id: sticky_residue, label: Sticky residue, synonyms: [honeydew, sticky leaves, shiny sticky film]}
+  - {id: visible_insects, label: Visible insects, synonyms: [bugs, aphids, flying insects, crawling insects, gnats]}
+  - {id: webbing, label: Fine webbing, synonyms: [cobwebs, silk threads, web on leaves]}
+  - {id: bumps_scale, label: Bumps on stems or leaves, synonyms: [scale, brown bumps, shells on stem]}
+  - {id: soft_stem_base, label: Soft or mushy stem base, synonyms: [mushy stem, rotting base, stem rot]}
+  - {id: soil_wet, label: Soil staying wet, synonyms: [soggy soil, waterlogged, never dries]}
+  - {id: soil_dry, label: Soil very dry, synonyms: [bone dry, pulling from pot edge, hard soil]}
+  - {id: soil_crust, label: Crust or deposits on soil, synonyms: [white crust, salt buildup, mineral crust]}
+  - {id: few_flowers, label: Few or no flowers, synonyms: [not blooming, no blooms, flower drop]}
+  - {id: water_soaked_spots, label: Water-soaked or oily spots, synonyms: [greasy spots, oily spots, translucent spots]}
+  - {id: dark_soft_roots, label: Dark or soft roots, synonyms: [brown roots, black roots, rotted roots, mushy roots]}
+  - {id: sooty_mold, label: Black sooty coating, synonyms: [black film, sooty mold, black residue on leaves]}
+  - {id: dry_brown_patch, label: Large dry brown patch, synonyms: [big brown patch, crispy patch, papery brown area, dead patch]}
+  - {id: healthy, label: No visible problem, synonyms: [looks fine, healthy, normal]}
+location_patterns:
+  - {id: lower_leaves_first, label: Lower or older leaves first, synonyms: [bottom leaves, old leaves]}
+  - {id: new_growth, label: New growth, synonyms: [young leaves, growing tips]}
+  - {id: leaf_edges, label: Leaf edges or tips, synonyms: [margins, tips]}
+  - {id: between_veins, label: Between veins, synonyms: [interveinal]}
+  - {id: one_side, label: One side of plant, synonyms: [facing window, one-sided]}
+  - {id: whole_plant, label: Whole plant, synonyms: [all over, everywhere]}
+  - {id: undersides, label: Leaf undersides, synonyms: [underside, back of leaf]}

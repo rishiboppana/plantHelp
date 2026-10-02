@@ -10,28 +10,32 @@ sources:
     license: "© Regents of the University of California, all rights reserved; non-commercial linking allowed. Reuse needs Legal Notices review/permission."
     date_accessed: 2026-10-02
     redistributable: unknown
-    ingest_mode: "extract short facts + URL only, pending owner approval"
+    ingest_mode: "short facts + URL only (owner approved 2026-10-02; license still not open, so no full text stored)"
 
   - source_id: src_psu_houseplant_problems
     title: "Preventing, Diagnosing, and Correcting Common Houseplant Problems"
     publisher: "Penn State Extension"
+    note: "2026-10-02: URL serves a general Pests and Diseases landing page, not the houseplant article; only one generic houseplant sentence. Not used for records."
     url: "https://extension.psu.edu/preventing-diagnosing-and-correcting-common-houseplant-problems"
-    license: "NOT YET CHECKED"
+    license: "Footer: '© 2026 The Pennsylvania State University'. No open license stated; legal statements at psu.edu/legal-statements not yet reviewed. Page also covers garden crops, not only houseplants."
     date_accessed: 2026-10-02
     redistributable: unknown
+    ingest_mode: "short facts + URL only (owner approved 2026-10-02; license still not open, so no full text stored)"
 
   - source_id: src_illinois_troubleshooting
     title: "Troubleshooting Houseplants"
     publisher: "University of Illinois Extension"
     url: "https://extension.illinois.edu/sites/default/files/troubleshooting_houseplants_0.pdf"
-    license: "NOT YET CHECKED"
+    license: "No copyright/license statement found in the PDF (checked 2026-10-02); treat as all rights reserved."
     date_accessed: 2026-10-02
     redistributable: unknown
+    ingest_mode: "short facts + URL only (owner approved 2026-10-02; license still not open, so no full text stored)"
 
   - source_id: src_umd_indoor_plant_problems
     title: "Diagnose Indoor Plant Problems"
     publisher: "University of Maryland Extension"
     url: "https://extension.umd.edu/resource/diagnose-indoor-plant-problems"
-    license: "NOT YET CHECKED"
+    license: "Footer: '© 2018-2026 College of Agriculture and Natural Resources'. No open license stated."
     date_accessed: 2026-10-02
     redistributable: unknown
+    ingest_mode: "short facts + URL only (owner approved 2026-10-02; license still not open, so no full text stored)"

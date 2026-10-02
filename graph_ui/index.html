@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PlantLens Graph RAG</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+:root{--bg:#0f1512;--panel:#17201b;--line:#2a372f;--text:#e6efe9;--mute:#8fa399;--accent:#7be0a4;
+--symptom:#f2b84b;--cause:#ef6f6c;--question:#6cb4ee;--action:#7be0a4;--plant:#c79bf2;--part:#8fa399}
+@media (prefers-color-scheme: light){:root{--bg:#f4f7f5;--panel:#fff;--line:#d5dfd9;--text:#16231b;--mute:#5d7166;--accent:#188a52;
+--symptom:#b97a00;--cause:#c93a37;--question:#1f6fb8;--action:#188a52;--plant:#7b45b5;--part:#5d7166}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,sans-serif;display:grid;grid-template-columns:340px 1fr 320px;height:100vh;overflow:hidden}
+aside{background:var(--panel);border-right:1px solid var(--line);padding:14px;overflow-y:auto}
+aside.right{border-right:0;border-left:1px solid var(--line)}
+h1{font-size:16px;margin:0 0 2px} h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin:16px 0 6px}
+.sub{color:var(--mute);font-size:12px}
+textarea{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit;resize:vertical;min-height:70px}
+button{background:var(--accent);color:#06130b;border:0;border-radius:8px;padding:7px 12px;font-weight:600;cursor:pointer;font:inherit;font-weight:600}
+button.ghost{background:transparent;color:var(--text);border:1px solid var(--line);font-weight:500}
+button:disabled{opacity:.4;cursor:default}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px}
+.chip{display:inline-block;padding:2px 8px;border-radius:99px;border:1px solid var(--line);font-size:12px;cursor:pointer;user-select:none}
+.chip.on{background:var(--accent);color:#06130b;border-color:var(--accent)}
+.ex{color:var(--accent);cursor:pointer;font-size:12px;text-decoration:underline dotted}
+.step{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:6px 0;cursor:pointer;opacity:.55}
+.step.active{opacity:1;border-color:var(--accent)} .step.done{opacity:.9}
+.step b{display:block} .step span{color:var(--mute);font-size:12px}
+.res{border-left:3px solid var(--cause);padding:4px 8px;margin:6px 0;cursor:pointer;background:var(--bg);border-radius:0 6px 6px 0}
+.res small{color:var(--mute)}
+#stage{position:relative;min-width:0}
+svg{width:100%;height:100%;display:block;cursor:grab}
+.legend{position:absolute;left:12px;top:10px;display:flex;gap:10px;flex-wrap:wrap;font-size:12px;background:color-mix(in srgb,var(--panel) 85%,transparent);padding:6px 10px;border-radius:8px;border:1px solid var(--line)}
+.legend label{cursor:pointer;display:flex;gap:4px;align-items:center}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+#tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px;max-width:320px;font-size:12px;display:none;z-index:5}
+#banner{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--accent);border-radius:10px;padding:8px 14px;max-width:80%;font-size:13px;display:none}
+.nb{display:block;width:100%;text-align:left;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:5px 8px;margin:4px 0;font-weight:400}
+.nb small{color:var(--mute);display:block}
+.tag{font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+.crumbs{font-size:12px;color:var(--mute);margin-top:6px} .crumbs a{color:var(--accent);cursor:pointer}
+.warn{color:var(--cause)} @media(max-width:900px){body{grid-template-columns:1fr;grid-template-rows:auto 60vh auto;overflow:auto;height:auto}}
+</style>
+</head>
+<body>
+<aside>
+  <h1>PlantLens Graph RAG</h1>
+  <div class="sub" id="meta">loading…</div>
+
+  <h2>Ask a query</h2>
+  <textarea id="q" placeholder="e.g. my pothos has yellow lower leaves and the soil stays soggy"></textarea>
+  <div class="row">
+    <span class="ex">yellow leaves, wet soil</span>
+    <span class="ex">sticky leaves and tiny webbing</span>
+    <span class="ex">brown crispy tips, dry soil</span>
+  </div>
+  <h2>Parsed observation <span class="sub">(click chips to edit)</span></h2>
+  <div id="obs" class="sub">run a query to see it</div>
+  <div class="row">
+    <label class="sub">mode <select id="mode"><option>hybrid</option><option>keyword</option><option>vector</option></select></label>
+    <label class="sub"><input type="checkbox" id="prefilter" checked> metadata pre-filter</label>
+  </div>
+  <div class="row"><button id="go">Retrieve</button><button class="ghost" id="reset">Clear</button></div>
+
+  <h2>Retrieval pipeline <span class="sub">(click a step)</span></h2>
+  <div id="steps" class="sub">—</div>
+  <h2>Top results</h2>
+  <div id="results" class="sub">—</div>
+  <h2>Follow-up questions</h2>
+  <div id="questions" class="sub">—</div>
+</aside>
+
+<div id="stage">
+  <div class="legend" id="legend"></div>
+  <svg id="svg"></svg>
+  <div id="tip"></div>
+  <div id="banner"></div>
+</div>
+
+<aside class="right">
+  <h2 style="margin-top:0">Selected node</h2>
+  <div id="detail" class="sub">Click any node to inspect it, then click its neighbours to walk the graph.</div>
+  <div class="crumbs" id="crumbs"></div>
+</aside>
+
+<script>
+const COLORS={symptom:'--symptom',cause:'--cause',question:'--question',action:'--action',plant:'--plant',part:'--part'};
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const state={graph:null,sel:null,trail:[],visible:new Set(['symptom','cause','question','action','plant']),hl:null,step:-1,res:null,obsEdit:null};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let sim,gSel,nodes,links,byId,adj;
+
+async function init(){
+  state.graph=await (await fetch('/api/graph')).json();
+  const g=state.graph; byId=Object.fromEntries(g.nodes.map(n=>[n.id,n]));
+  adj={}; g.nodes.forEach(n=>adj[n.id]=[]);
+  g.edges.forEach(e=>{adj[e.s].push({id:e.t,rel:e.rel,dir:'out'});adj[e.t].push({id:e.s,rel:e.rel,dir:'in'})});
+  const c=g.config;
+  $('meta').textContent=`${g.nodes.length} nodes · ${g.edges.length} edges · embedder: ${g.embedder} · K=${c.K}, RRF k=${c.rrf_k}`;
+  $('legend').innerHTML=Object.keys(COLORS).map(t=>`<label><input type="checkbox" data-t="${t}" ${state.visible.has(t)?'checked':''}><span class="dot" style="background:var(${COLORS[t]})"></span>${t}</label>`).join('');
+  $('legend').onchange=e=>{const t=e.target.dataset.t;e.target.checked?state.visible.add(t):state.visible.delete(t);draw()};
+  draw();
+}
+
+function draw(){
+  const svg=d3.select('#svg'); svg.selectAll('*').remove();
+  const W=$('stage').clientWidth,H=$('stage').clientHeight;
+  const vis=n=>state.visible.has(n.type);
+  nodes=state.graph.nodes.filter(vis).map(n=>({...n}));
+  const ids=new Set(nodes.map(n=>n.id));
+  links=state.graph.edges.filter(e=>ids.has(e.s)&&ids.has(e.t)).map(e=>({source:e.s,target:e.t,rel:e.rel}));
+  const root=svg.append('g'); svg.call(d3.zoom().scaleExtent([.2,4]).on('zoom',e=>root.attr('transform',e.transform)));
+  const link=root.append('g').selectAll('line').data(links).join('line').attr('stroke','var(--line)').attr('stroke-width',1);
+  const node=root.append('g').selectAll('g').data(nodes).join('g').style('cursor','pointer')
+    .call(d3.drag().on('start',(e,d)=>{if(!e.active)sim.alphaTarget(.3).restart();d.fx=d.x;d.fy=d.y}).on('drag',(e,d)=>{d.fx=e.x;d.fy=e.y}).on('end',(e,d)=>{if(!e.active)sim.alphaTarget(0);d.fx=d.fy=null}));
+  const R={cause:11,symptom:9,plant:8,question:5,action:4,part:5};
+  node.append('circle').attr('r',d=>R[d.type]).attr('fill',d=>css(COLORS[d.type])).attr('stroke','var(--bg)').attr('stroke-width',1.5);
+  node.append('text').text(d=>d.type==='cause'||d.type==='symptom'||d.type==='plant'?(d.label.length>26?d.label.slice(0,25)+'…':d.label):'')
+    .attr('x',13).attr('y',4).attr('fill','var(--text)').attr('font-size',11).style('pointer-events','none');
+  node.on('click',(e,d)=>{e.stopPropagation();select(d.id,true)})
+    .on('mousemove',(e,d)=>{const t=$('tip');t.style.display='block';const r=$('stage').getBoundingClientRect();t.style.left=(e.clientX-r.left+14)+'px';t.style.top=(e.clientY-r.top+14)+'px';
+      t.innerHTML=`<span class="tag" style="color:var(${COLORS[d.type]})">${d.type}</span><br><b>${esc(d.label)}</b><br>${esc(d.line)}`})
+    .on('mouseleave',()=>$('tip').style.display='none');
+  svg.on('click',()=>select(null));
+  sim=d3.forceSimulation(nodes).force('link',d3.forceLink(links).id(d=>d.id).distance(d=>d.rel==='indicates'?70:40).strength(.5))
+    .force('charge',d3.forceManyBody().strength(-120)).force('center',d3.forceCenter(W/2,H/2)).force('collide',d3.forceCollide(14))
+    .on('tick',()=>{link.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y).attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);node.attr('transform',d=>`translate(${d.x},${d.y})`)});
+  gSel={node,link}; paint();
+}
+
+function paint(){
+  if(!gSel) return;
+  const sel=state.sel, nb=new Set(sel?adj[sel].map(a=>a.id).concat(sel):[]);
+  const hl=state.hl; // {ids:Set, label}
+  gSel.node.select('circle').attr('opacity',d=>hl?(hl.ids.has(d.id)?1:.12):(sel?(nb.has(d.id)?1:.2):1))
+    .attr('stroke',d=>d.id===sel?'var(--text)':(hl&&hl.ids.has(d.id)?'var(--accent)':'var(--bg)')).attr('stroke-width',d=>d.id===sel||(hl&&hl.ids.has(d.id))?3:1.5);
+  gSel.node.select('text').attr('opacity',d=>hl?(hl.ids.has(d.id)?1:.15):(sel?(nb.has(d.id)?1:.2):1))
+    .text(d=>(d.type==='cause'||d.type==='symptom'||d.type==='plant'||(hl&&hl.ids.has(d.id))||nb.has(d.id)&&sel)?(d.label.length>30?d.label.slice(0,29)+'…':d.label):'');
+  gSel.link.attr('stroke',d=>{const s=d.source.id,t=d.target.id;if(hl&&hl.ids.has(s)&&hl.ids.has(t))return 'var(--accent)';if(sel&&(s===sel||t===sel))return 'var(--text)';return 'var(--line)'})
+    .attr('stroke-opacity',d=>{const s=d.source.id,t=d.target.id;if(hl)return hl.ids.has(s)&&hl.ids.has(t)?1:.1;if(sel)return s===sel||t===sel?1:.15;return 1})
+    .attr('stroke-width',d=>(hl&&hl.ids.has(d.source.id)&&hl.ids.has(d.target.id))||(sel&&(d.source.id===sel||d.target.id===sel))?2.2:1);
+}
+
+function select(id,push){
+  state.sel=id;
+  if(id&&push){state.trail.push(id);if(state.trail.length>8)state.trail.shift()}
+  const d=$('detail');
+  if(!id){d.innerHTML='Click any node to inspect it, then click its neighbours to walk the graph.';$('crumbs').innerHTML='';return paint()}
+  const n=byId[id];
+  if(!state.visible.has(n.type)){state.visible.add(n.type);document.querySelector(`#legend [data-t=${n.type}]`).checked=true;draw()}
+  const groups={};
+  adj[id].forEach(a=>{(groups[a.rel+(a.dir==='in'?' ←':' →')]??=[]).push(a.id)});
+  let extra='';
+  if(n.type==='cause') extra=`<p>${esc(n.summary)}</p><p class="sub">Category: ${esc(n.category)} · ${esc(n.record_id)}${n.caveats?'<br>Caveat: '+esc(n.caveats):''}${n.source?`<br><a style="color:var(--accent)" target="_blank" href="${esc(n.source)}">source</a>`:''}</p>`;
+  else extra=`<p>${esc(n.line)}</p>`;
+  d.innerHTML=`<span class="tag" style="color:var(${COLORS[n.type]})">${n.type}</span><h3 style="margin:2px 0 6px">${esc(n.label)}</h3>${extra}`+
+    Object.entries(groups).map(([rel,list])=>`<h2>${esc(rel)} (${list.length})</h2>`+list.map(i=>`<button class="nb" data-id="${esc(i)}"><small class="tag" style="color:var(${COLORS[byId[i].type]})">${byId[i].type}</small>${esc(byId[i].label)}<small>${esc(byId[i].line)}</small></button>`).join('')).join('');
+  d.querySelectorAll('.nb').forEach(b=>b.onclick=()=>select(b.dataset.id,true));
+  $('crumbs').innerHTML='Path: '+state.trail.map((t,i)=>`<a data-i="${i}">${esc(byId[t].label.slice(0,18))}</a>`).join(' › ');
+  $('crumbs').querySelectorAll('a').forEach(a=>a.onclick=()=>{const t=state.trail[+a.dataset.i];state.trail=state.trail.slice(0,+a.dataset.i);select(t,true)});
+  paint();
+}
+
+/* ---------- retrieval ---------- */
+document.querySelectorAll('.ex').forEach(e=>e.onclick=()=>{$('q').value=e.textContent;run()});
+$('go').onclick=()=>run(); $('reset').onclick=()=>{state.hl=null;state.res=null;state.obsEdit=null;$('q').value='';['obs','steps','results','questions'].forEach(i=>$(i).textContent='—');$('banner').style.display='none';select(null)};
+$('q').onkeydown=e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey))run()};
+
+async function run(useEdit){
+  const body={text:$('q').value,mode:$('mode').value,prefilter:$('prefilter').checked};
+  if(useEdit&&state.obsEdit)Object.assign(body,state.obsEdit);
+  const r=await fetch('/api/query',{method:'POST',body:JSON.stringify(body)}); const j=await r.json();
+  if(j.error){$('steps').innerHTML=`<span class="warn">${esc(j.error)}</span>`;return}
+  state.res=j; state.obsEdit={symptoms:j.observation.symptoms,plant_parts:j.observation.plant_parts,location_patterns:j.observation.location_patterns,plant_id:j.observation.plant.id||''};
+  renderObs(j); renderSteps(j); showStep(0);
+}
+
+function renderObs(j){
+  const o=j.observation, g=state.graph;
+  const symAll=g.nodes.filter(n=>n.type==='symptom'), partAll=g.nodes.filter(n=>n.type==='part');
+  const mk=(list,key,field)=>list.map(n=>`<span class="chip ${state.obsEdit[field].includes(n.key)?'on':''}" data-f="${field}" data-k="${n.key}">${esc(n.label)}</span>`).join(' ');
+  $('obs').innerHTML=`<div class="sub">plant: <b>${esc(o.plant.id||'unknown')}</b></div><div class="row">${mk(symAll,'key','symptoms')}</div><div class="sub" style="margin-top:6px">parts</div><div class="row">${mk(partAll,'key','plant_parts')}</div><div class="row"><button class="ghost" id="rerun">Re-run with edits</button></div>`;
+  $('obs').querySelectorAll('.chip').forEach(c=>c.onclick=()=>{const a=state.obsEdit[c.dataset.f],k=c.dataset.k;const i=a.indexOf(k);i<0?a.push(k):a.splice(i,1);c.classList.toggle('on')});
+  $('rerun').onclick=()=>run(true);
+}
+
+function renderSteps(j){
+  const o=j.observation,c=state.graph.config,rank=new Map(j.results.map((r,i)=>[r.record_id,i+1]));
+  const recIds=a=>new Set(a.map(x=>'rec:'+x));
+  const symIds=o.symptoms.map(s=>'sym:'+s), partIds=o.plant_parts.map(p=>'part:'+p);
+  const filt=recIds(j.debug.filtered_ids), kw=recIds(j.debug.keyword_ids), vec=recIds(j.debug.vector_ids), fin=recIds(j.results.map(r=>r.record_id));
+  const total=state.graph.nodes.filter(n=>n.type==='cause').length;
+  const withNb=(s,...extra)=>{const ids=new Set(s);extra.flat().forEach(x=>ids.add(x));return ids};
+  const applied=Object.entries(j.filters_applied).filter(([,v])=>v).map(([k])=>k).join(', ')||'none';
+  const steps=[
+   {t:'1 · Observation',d:`${o.symptoms.length} symptom(s), ${o.plant_parts.length} part(s), plant ${o.plant.id||'unknown'}`,ids:withNb(symIds,partIds,o.plant.id?['plant:'+o.plant.id]:[]),
+    msg:'The query is turned into structured symptoms / parts / plant. These graph nodes are the entry points.'},
+   {t:'2 · Metadata pre-filter',d:`${filt.size}/${total} causes pass (${applied})${j.filters_relaxed.length?' · relaxed: '+j.filters_relaxed.join(', '):''}`,ids:withNb(filt,symIds),
+    msg:`Only records linked to the observed symptoms/parts/plant survive. Need ≥ ${c.min_viable}; otherwise filters are relaxed in order: plant_parts → plant → symptoms.`},
+   {t:'3 · Keyword (BM25)',d:`${kw.size} candidates from full-text match`,ids:withNb(kw),
+    msg:'BM25 over each cause’s retrieval text (summary, synonyms, plants, parts), restricted to the filtered set.'},
+   {t:'4 · Vector (cosine)',d:`${vec.size} candidates by embedding similarity (${state.graph.embedder})`,ids:withNb(vec),
+    msg:'Query embedding vs. each record’s embedding, restricted to the filtered set.'},
+   {t:'5 · RRF fusion → top-K',d:`${j.results.length} result(s) · coverage: ${j.coverage}`,ids:withNb(fin,symIds),
+    msg:`Reciprocal Rank Fusion (k=${c.rrf_k}) merges keyword + vector ranks; top ${c.K} kept. Coverage = ${j.coverage}.`},
+   {t:'6 · Walk to questions & actions',d:`${j.questions.length} follow-up question(s) chosen`,ids:withNb(fin,j.questions.map(q=>'q:'+q.question),
+      j.results.flatMap(r=>(adj['rec:'+r.record_id]||[]).filter(a=>byId[a.id].type==='action').map(a=>a.id))),
+    msg:'From each top cause the graph is walked to its distinguishing questions (round-robin across causes) and next actions.'}
+  ];
+  state.steps=steps;
+  $('steps').innerHTML=steps.map((s,i)=>`<div class="step" data-i="${i}"><b>${s.t}</b><span>${esc(s.d)}</span></div>`).join('');
+  $('steps').querySelectorAll('.step').forEach(e=>e.onclick=()=>showStep(+e.dataset.i));
+  $('results').innerHTML=j.results.length?j.results.map((r,i)=>`<div class="res" data-id="rec:${r.record_id}"><b>${i+1}. ${esc(r.cause)}</b><br><small>rrf ${r.score} · cos ${r.cosine} · kw ${r.keyword_hit?'✓':'✗'}${r.symptom_overlap.length?' · matches: '+esc(r.symptom_overlap.join(', ')):''}</small></div>`).join(''):`<span class="warn">No evidence found (coverage: ${j.coverage}) — the app would ask for a better photo/details.</span>`;
+  $('results').querySelectorAll('.res').forEach(e=>e.onclick=()=>select(e.dataset.id,true));
+  $('questions').innerHTML=j.questions.length?j.questions.map(q=>`<div class="res" style="border-color:var(--question)" data-id="q:${esc(q.question)}">${esc(q.question)}<br><small>supports: ${esc(q.supports)}</small></div>`).join(''):'—';
+  $('questions').querySelectorAll('.res').forEach(e=>e.onclick=()=>select(e.dataset.id,true));
+}
+
+function showStep(i){
+  const s=state.steps[i]; state.step=i; state.sel=null;
+  document.querySelectorAll('.step').forEach((e,k)=>{e.classList.toggle('active',k===i);e.classList.toggle('done',k<i)});
+  state.hl={ids:s.ids}; const b=$('banner'); b.style.display='block'; b.innerHTML=`<b>${esc(s.t)}</b> — ${esc(s.msg)}`;
+  paint();
+}
+init();
+</script>
+</body>
+</html>
