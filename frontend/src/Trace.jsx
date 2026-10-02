@@ -4,19 +4,31 @@ import { useEffect, useState } from 'react'
 const SEG = {
   skill: ['#2d6a4f', 'Skill instructions'], profile: ['#52b788', 'Plant profile'], findings: ['#f4a261', 'Image findings'],
   history: ['#95d5b2', 'History'], answers: ['#e9c46a', 'User answers'], rag: ['#457b9d', 'RAG chunks'],
-  images: ['#8e7dbe', 'Photo'], reply: ['#b7e4c7', 'This reply'],
+  images: ['#8e7dbe', 'Photo'], graph: ['#e76f51', 'Memory graph'], reply: ['#b7e4c7', 'This reply'],
 }
 const n = (x) => Math.round(x || 0).toLocaleString()
 
 export function ContextBar({ ctx }) {
-  const segs = ctx.segments.filter((s) => s.tokens > 0)
+  const segs = (ctx.segments || []).filter((s) => s.tokens > 0)
+  const src = { provider: "the provider's published limit", model: "the model's smallest provider limit", env: 'set by PLANTLENS_CTX', assumed: 'assumed: the router did not list one' }[ctx.limit_source]
   return (
     <>
-      <div className="ctxhead"><b>{n(ctx.used)}</b> / {n(ctx.limit)} tokens{ctx.estimate ? ' (estimate until the reply arrives)' : ctx.exact === false ? ' (estimated)' : ''}</div>
+      <div className="ctxhead"><b>{n(ctx.used)}</b> / {n(ctx.limit)} tokens{ctx.exact === false ? ' (estimated)' : ''}</div>
+      {src && <small title={ctx.model}>limit: {src}</small>}
       <div className="meter">{segs.map((s) => <div key={s.key} className="seg" title={`${(SEG[s.key] || [])[1] || s.label}: ${n(s.tokens)}`}
         style={{ width: `${(s.tokens / ctx.limit) * 100}%`, background: (SEG[s.key] || ['#999'])[0] }} />)}</div>
       <div className="legend">{segs.map((s) => <div key={s.key}><i style={{ background: (SEG[s.key] || ['#999'])[0] }} />{(SEG[s.key] || [])[1] || s.label}<b>{n(s.tokens)}</b></div>)}</div>
     </>
+  )
+}
+
+// every model call of this conversation, newest last, each against the window (route / observe / verify / reply …)
+export function CallList({ calls, limit }) {
+  if (!calls?.length) return null
+  return (
+    <div className="legend calls">{calls.map((c, i) => <div key={i} title={`${c.model || ''}${c.exact ? '' : ' (estimated)'}`}>
+      <i style={{ background: '#7b61c4', opacity: 0.35 + 0.65 * Math.min(1, (c.prompt + c.completion) / limit * 4) }} />
+      <span>turn {c.turn} · {c.label}</span><b>{n(c.prompt)}→{n(c.completion)}</b></div>)}</div>
   )
 }
 
@@ -25,7 +37,7 @@ const KIND = { turn: ['▶️', '#2d6a4f'], model: ['🤖', '#7b61c4'], retrieva
   context: ['🧠', '#52b788'], rag: ['📚', '#2a9d8f'], event: ['📅', '#c9a227'], wait: ['⏳', '#999'] }
 const tokens = (s) => (s.kind === 'model' && s.attrs.total_tokens != null ? s.attrs.total_tokens : 0)
 const ms = (v) => (v == null ? '…' : v >= 1000 ? `${(v / 1000).toFixed(1)}s` : `${v}ms`)
-const HIDE = new Set(['segments', 'chunks', 'prompt_tokens', 'completion_tokens', 'total_tokens', 'source'])
+const HIDE = new Set(['segments', 'calls', 'chunks', 'prompt_tokens', 'completion_tokens', 'total_tokens', 'source'])
 
 function stats(spans) {
   const done = spans.filter((s) => s.kind !== 'event' && s.kind !== 'wait' || (s.kind === 'wait' && (s.dur_ms || 0) >= 50))
@@ -49,7 +61,7 @@ function Stats({ spans }) {
 // ---------- timeline ----------
 function Timeline({ spans }) {
   const [open, setOpen] = useState(null)
-  const rows = spans.filter((s) => !(s.kind === 'wait' && (s.dur_ms || 0) < 50) && s.kind !== 'rag' && !(s.kind === 'context' && s.attrs.segments))
+  const rows = spans.filter((s) => !(s.kind === 'wait' && (s.dur_ms || 0) < 50) && s.kind !== 'rag' && !(s.kind === 'context' && 'segments' in s.attrs))
   const byId = Object.fromEntries(spans.map((s) => [s.id, s]))
   const depth = (s) => { let d = 0; for (let p = byId[s.parent]; p; p = byId[p.parent]) d++; return d }
   const sorted = [...rows].sort((a, b) => a.start_ms - b.start_ms)
@@ -120,7 +132,7 @@ function Rag({ spans }) {
 export function TracePanel({ tr, busy, onRefresh, version }) {
   useEffect(() => { if (tr?.id && !busy) onRefresh() }, [version])   // event actions append to the trace on the server
   const spans = tr?.spans || []
-  const ctxSpan = [...spans].reverse().find((s) => s.kind === 'context' && s.attrs.segments)
+  const ctxSpan = [...spans].reverse().find((s) => s.kind === 'context' && 'segments' in s.attrs)
   if (!spans.length) return <><h3>Trace</h3><p>Send a message or photo and every step I take shows up here, live.</p></>
   return (
     <>

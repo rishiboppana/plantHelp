@@ -4,14 +4,15 @@ CLI:  python -m src.pipeline --photo test_photos/x.jpg [--text "..."]   (then ty
 import argparse, json, os, re, threading
 from pathlib import Path
 import yaml
-from src.remote_vlm import RemoteVLM
+from src.remote_vlm import RemoteVLM, MODELS, BASE_URL
+from src.limits import context_limit
+from src.convgraph import ConvGraph, EXTRACT
 from src.retrieve import retrieve
 from src import trace
 from src.trace import span, tok
 from src.validate.validate import KB
 
 SKILL = KB.parent / "plantlens"
-NUM_CTX = int(os.environ.get("PLANTLENS_CTX", 16384))   # context budget shown in the meter (set to the served model's real window)
 OTHER_TO_SYMPTOM = {"soil_looks_wet": "soil_wet", "soil_looks_dry": "soil_dry", "soil_crusted": "soil_crust",
                     "webbing": "webbing", "insects_visible": "visible_insects"}
 
@@ -175,9 +176,36 @@ def ground_reply(reply, kb, report=None):
     return out
 
 
+GRAPH_AT = float(os.environ.get("PLANTLENS_GRAPH_AT", 0.85))   # share of the window at which the chat is condensed into the memory graph
+CARRY_CALLS = {"Write reply", "Answer plant question"}   # the calls that carry the whole conversation; the others are one-off side calls
+WARN, FULL = 0.6, 0.85                                  # share of the window at which the meter turns amber / red
+
+
+def new_ledger():
+    return {"calls": [], "cumulative": 0, "peak": 0, "used": 0, "limit": None, "limit_source": None, "model": None}
+
+
+def context_state(ledger, turns=0):
+    """What the context meter shows for one conversation. `used` is the size of the last call that carried the conversation
+    (prompt + reply), i.e. what the next turn starts from; `cumulative` is every token spent on every call so far."""
+    L = ledger
+    limit, src, model = L["limit"], L["limit_source"], L["model"]
+    if not limit:                                         # nothing sent yet: the window of the model that will be asked first
+        model = MODELS[0]; limit, src = context_limit(model, BASE_URL)
+    share = L["used"] / limit if limit else 0
+    return {"limit": limit, "limit_source": src, "model": model, "used": L["used"], "cumulative": L["cumulative"], "peak": L["peak"],
+            "turns": turns, "level": "full" if share >= FULL else "warn" if share >= WARN else "ok", "calls": L["calls"][-14:]}
+
+
 class Session:
     def __init__(self, vlm=None):
         self.vlm = vlm or RemoteVLM()
+        self.ledger = new_ledger()  # live token accounting for this conversation (persisted with the state)
+        self.segments = []         # last prompt breakdown for the meter
+        self.graph = None          # ConvGraph once the chat has filled GRAPH_AT of the window; prompts then carry graph lookups, not history
+        self.log = []              # [{turn, user, assistant}] in order, across the diagnose and Q&A paths (the source for the graph)
+        self.frozen = None         # plant profile + journal as they were when the conversation began; keeps every turn's prompt consistent
+        self.vlm.on_usage = self._on_usage
         self.history = []          # user/assistant messages for the reply call
         self.observation = None
         self.last = {}
@@ -188,6 +216,27 @@ class Session:
         self.qa_history = []       # plain Q&A turns outside the diagnosis skill
         self.route_cache = {}
         self.lock = threading.RLock()   # analyze and chat may arrive together; observe only once
+
+    def _on_usage(self, label, u):
+        """Called after every model call: put it in the ledger and publish the new meter reading right away."""
+        L = self.ledger
+        L["calls"].append({"label": label, "turn": self.turns, "prompt": u["prompt_tokens"], "completion": u["completion_tokens"],
+                           "model": u["model"], "exact": u["source"] == "provider"})
+        L["calls"] = L["calls"][-60:]
+        L["cumulative"] += u["total_tokens"]
+        L["peak"] = max(L["peak"], u["total_tokens"])
+        L["limit"], L["limit_source"], L["model"] = u["limit"], u["limit_source"], u["model"]
+        if label in CARRY_CALLS: L["used"] = u["total_tokens"]
+        self._publish()
+
+    def context_state(self):
+        g = self.graph
+        return {**context_state(self.ledger, self.turns), "graph": {"nodes": len(g.nodes), "edges": len(g.edges), "built_turn": g.built_turn,
+                                                                    "at_tokens": self.ledger.get("condensed_at", 0)} if g else None}
+
+    def _publish(self):
+        st = self.context_state()
+        trace.context(self.segments, st.pop("limit"), st.pop("used"), **st, exact=all(c["exact"] for c in st["calls"][-1:]))
 
     def _observe(self, photo, text):
         ask = ("Output ONLY the observation JSON described in the skill. Use only symptom, location and plant_part ids from the "
@@ -324,13 +373,18 @@ class Session:
     def to_state(self):
         """JSON-safe snapshot so a conversation can resume after a restart without replaying model calls."""
         return {"observation": self.observation, "history": self.history, "qa_history": self.qa_history, "diag_turns": self.diag_turns,
-                "turns": self.turns, "photo": self.photo, "stage": self.last.get("stage"), "intent": self.last.get("intent")}
+                "turns": self.turns, "photo": self.photo, "stage": self.last.get("stage"), "intent": self.last.get("intent"),
+                "regions": self.regions, "ledger": self.ledger, "segments": self.segments, "frozen": self.frozen,
+                "graph": self.graph.to_dict() if self.graph else None, "log": self.log}
 
     @classmethod
     def from_state(cls, st, vlm=None):
         s = cls(vlm)
         s.observation, s.history, s.qa_history = st.get("observation"), st.get("history", []), st.get("qa_history", [])
         s.diag_turns, s.turns, s.photo = st.get("diag_turns", 0), st.get("turns", 0), st.get("photo")
+        s.regions, s.segments, s.frozen = st.get("regions"), st.get("segments", []), st.get("frozen")
+        s.graph, s.log = (ConvGraph.from_dict(st["graph"]) if st.get("graph") else None), st.get("log", [])
+        s.ledger = {**new_ledger(), **(st.get("ledger") or {})}
         s.last = {"stage": st.get("stage"), "intent": st.get("intent"), "kb": {"results": []}}
         return s
 
@@ -347,7 +401,7 @@ class Session:
         with self.lock:
             if key not in self.route_cache:
                 ctx = f"has_photo: {'yes' if photo else 'no'}\nawaiting_answers_to_assistant_questions: {'yes' if awaiting else 'no'}\n"
-                if awaiting: ctx += f"assistant's last message: {self.history[-1]['content'][:400]}\n"
+                if awaiting: ctx += f"assistant's last message: {self._last_assistant()[:400]}\n"
                 reply = self.vlm.chat([{"role": "system", "content": ROUTER}, {"role": "user", "content": ctx + f'user message: "{text}"'}], 5, 0.0, "Route message").strip().upper()
                 intent = next((w.lower() for w in ("DIAGNOSE", "ANSWER", "QUESTION", "OFFTOPIC") if w in reply), "diagnose" if photo else "question")
                 if intent == "answer" and not awaiting: intent = "diagnose" if self.diag_turns == 0 and photo else "question"
@@ -359,9 +413,59 @@ class Session:
         with span("wait", "Waiting for the session lock"): self.lock.acquire()
         try:
             self._parts = parts or {}
-            return self._dispatch(text, photo, extra_context, skill)
+            reply = self._dispatch(text, photo, extra_context, skill)
+            self._after_turn(text, reply)
+            return reply
         finally:
             self.lock.release()
+
+    def _after_turn(self, text, reply):
+        """Log the exchange. Once the chat has used GRAPH_AT of the window it is condensed into the graph; from then on the graph grows instead."""
+        self.log.append({"turn": self.turns, "user": text or "", "assistant": reply})
+        if self.graph:
+            self.graph.add_exchange(self.turns, text, reply)
+            self.log = self.log[-4:]
+        else:
+            st = self.context_state()
+            if st["limit"] and st["used"] >= GRAPH_AT * st["limit"]: self._condense()
+
+    def _transcript(self):
+        rows = self.log
+        if not rows:                                           # a chat saved before the log existed: rebuild it from the two histories
+            u = [self._user_text(m) for m in self.history if m["role"] == "user"] + [m["content"] for m in self.qa_history if m["role"] == "user"]
+            a = [m["content"] for m in self.history if m["role"] == "assistant"] + [m["content"] for m in self.qa_history if m["role"] == "assistant"]
+            rows = [{"turn": i + 1, "user": x, "assistant": a[i] if i < len(a) else ""} for i, x in enumerate(u)]
+        obs = {k: v for k, v in (self.observation or {}).items() if not k.startswith("_")}
+        return (f"PHOTO OBSERVATION: {json.dumps(obs)}\n\n" if obs else "") + "\n\n".join(
+            f"[turn {r['turn']}] USER: {(r['user'] or '(photo)')[:1500]}\nASSISTANT: {r['assistant'][:2500]}" for r in rows)
+
+    def _condense(self):
+        """Turn the whole conversation into the memory graph (one model call; if it fails, every exchange becomes plain nodes)."""
+        L = self.ledger
+        with span("context", "Condense conversation into memory graph", used=L["used"], limit=L["limit"]) as a:
+            g = ConvGraph(built_turn=self.turns)
+            g.seed_from_state(self.observation, [r["record"] for r in (self.last.get("kb") or {}).get("results", [])], self.turns)
+            try:
+                g.merge_extracted(parse_json(self.vlm.chat([{"role": "system", "content": EXTRACT}, {"role": "user", "content": self._transcript()}],
+                                                           1800, 0.0, "Condense conversation into graph")), self.turns)
+            except Exception as e:
+                a["extract_error"] = str(e)[:200]
+                for r in self.log: g.add_exchange(r["turn"], r["user"], r["assistant"])
+            self.graph, self.log = g, self.log[-4:]
+            L["condensed_at"], L["used"] = L["used"], 0            # the next prompt starts small: graph lookup + the new message
+            a.update(nodes=len(g.nodes), edges=len(g.edges))
+        self._publish()
+
+    def _lookup(self, text):
+        with span("retrieval", "Memory graph lookup") as a:
+            facts, ids = self.graph.retrieve(text)
+            a.update(query=(text or "")[:120], nodes=len(ids), of=len(self.graph.nodes), picked=[self.graph.nodes[i]["text"][:90] for i in ids])
+        return facts
+
+    def _last_assistant(self):
+        if self.log: return self.log[-1]["assistant"]
+        h = [m for m in self.history if m["role"] == "assistant"]
+        return h[-1]["content"] if h else ""
 
     def _dispatch(self, text, photo, extra_context, skill):
         if text.strip().lower().startswith(DIAGNOSE_COMMANDS):
@@ -390,7 +494,7 @@ class Session:
         c = m["content"]
         return c if isinstance(c, str) else " ".join(x.get("text", "") for x in c if x["type"] == "text")
 
-    def _record_context(self, skill, findings, rag, history, answers, extra_context, has_image):
+    def _record_context(self, skill, findings, rag, history, answers, extra_context, has_image, graph=""):
         """Break the prompt just sent into labelled segments and publish it to the trace (the context-window meter).
         Text is estimated at ~4 chars/token; image tokens are whatever the provider's real prompt count says is left over."""
         parts = getattr(self, "_parts", {})
@@ -398,37 +502,39 @@ class Session:
         rest = max(0, tok(extra_context) - tok(profile) - tok(journal)) if extra_context else 0      # e.g. the SOS/healthy mode hint
         segs = [("skill", "Skill instructions", tok(skill) + rest), ("profile", "Plant profile", tok(profile)),
                 ("findings", "Image findings", tok(findings)), ("history", "History", tok(journal) + tok(history)),
-                ("answers", "User answers", tok(answers)), ("rag", "RAG chunks", tok(rag))]
+                ("answers", "User answers", tok(answers)), ("rag", "RAG chunks", tok(rag)), ("graph", "Memory graph", tok(graph))]
         text_total = sum(t for _, _, t in segs)
         u = self.vlm.last_usage
         images = (max(0, u["prompt_tokens"] - text_total) if u else 576) if has_image else 0
-        segs += [("images", "Photo", images), ("reply", "This reply", u["completion_tokens"] if u else 0)]
-        exact = bool(u and u["source"] == "provider")
-        used = u["prompt_tokens"] + u["completion_tokens"] if exact else sum(t for _, _, t in segs)    # segments are estimates; the total is the provider's count
-        trace.context([{"key": k, "label": l, "tokens": t} for k, l, t in segs], NUM_CTX, used, exact=exact)
+        self.segments = segs + [("images", "Photo", images), ("reply", "This reply", u["completion_tokens"] if u else 0)]
+        self.segments = [{"key": k, "label": l, "tokens": t} for k, l, t in self.segments]
+        self._publish()
 
     def _general(self, text, photo, extra_context):
         """Plain answer to a care question. No skill format, no causes, no checklist unless the user asks."""
         if photo and self.observation is None:
             self.ensure_observation(photo, "")
         o = self.observation
-        ctx, found, earlier = [], "", ""
-        if o:
+        ctx, found, earlier, facts = [], "", "", ""
+        if self.graph:
+            facts = self._lookup(text)
+            ctx.append("Conversation memory (retrieved from earlier in this chat):\n" + facts)
+        elif o:
             pl = o.get("plant") or {}
             found = (f"From the photo: plant looks like {pl.get('name', 'unknown')} (confidence {pl.get('confidence', 'unknown')}); "
                      f"health: {o.get('health')}; visible symptoms: {', '.join(o.get('symptoms') or []) or 'none'}.")
             ctx.append(found)
-        if self.history and self.history[-1]["role"] == "assistant":
+        if not self.graph and self.history and self.history[-1]["role"] == "assistant":
             earlier = "Earlier you told the user: " + self.history[-1]["content"][:1200]
             ctx.append(earlier)
         if extra_context: ctx.append("Saved plant context: " + extra_context)
         msgs = [{"role": "system", "content": GENERAL}, {"role": "user", "content": "CONTEXT (do not repeat it):\n" + "\n".join(ctx or ["No photo yet."])}]
-        msgs += self.qa_history[-6:] + [{"role": "user", "content": text}]
+        prior = [] if self.graph else self.qa_history[-6:]
+        msgs += prior + [{"role": "user", "content": text}]
         reply = split_reply(self.vlm.chat(msgs, 450, 0.3, "Answer plant question"))
-        prior = self.qa_history[-6:]
         self._record_context(GENERAL, found, "", earlier + " ".join(m["content"] for m in prior if m["role"] == "assistant"),
-                             " ".join(m["content"] for m in prior if m["role"] == "user") + " " + text, extra_context, False)
-        self.qa_history += [{"role": "user", "content": text}, {"role": "assistant", "content": reply}]
+                             " ".join(m["content"] for m in prior if m["role"] == "user") + " " + text, extra_context, False, facts)
+        if not self.graph: self.qa_history += [{"role": "user", "content": text}, {"role": "assistant", "content": reply}]
         self.last = {"intent": "question", "stage": self.last.get("stage"), "kb": self.last.get("kb", {"results": []}), "observation": o, "reply": reply}
         return reply
 
@@ -439,7 +545,9 @@ class Session:
         elif text and not first:
             self.observation = self._update(text)
         self.diag_turns += 1
-        prior = list(self.history)                      # everything before this turn, for the context-window accounting
+        gm = self.graph is not None                     # graph mode: the prompt carries lookups from the memory graph instead of the history
+        prior = [] if gm else list(self.history)        # everything before this turn, for the context-window accounting
+        facts = self._lookup(text) if gm else ""
         kb = self.search()
         records = [{"record_id": r["record"]["record_id"], "cause": r["record"]["cause"], "category": r["record"]["cause_category"],
                     "summary": r["record"]["summary"], "distinguishing_questions": [q["question"] for q in r["record"]["distinguishing_questions"]],
@@ -449,13 +557,15 @@ class Session:
                + json.dumps({"coverage": kb["coverage"], "filters_relaxed": kb["filters_relaxed"], "records": records,
                              "suggested_questions": kb["questions"]}, indent=1)
                + (f"\n\nPLANT CONTEXT (from the user's saved profile and history; not a source of causes):\n{extra_context}" if extra_context else "")
+               + (f"\n\nCONVERSATION MEMORY (retrieved from earlier in this chat; the user's own statements and what you advised):\n{facts}" if gm else "")
                + "\n\nOBSERVATION:\n" + json.dumps({k: v for k, v in self.observation.items() if not k.startswith("_")})
                + f"\n\nSECTIONS YOU MAY WRITE THIS TURN: {allowed_sections(self.observation, kb['coverage'], not first)}.\nTreat as fact only what the photo shows or the user wrote; never state that the user said something they did not.\n{FORMAT}")
         content = ([{"type": "image_path", "path": photo}] if first and photo else []) + [{"type": "text", "text": (text or "Here is my plant.") + "\n\n" + ctx}]
-        self.history.append({"role": "user", "content": content})
-        reply = split_reply(self.vlm.chat([{"role": "system", "content": SYSTEM}] + self.history, 1000, 0.3, "Write reply"))
+        if gm: convo = [{"role": "user", "content": content}]
+        else: self.history.append({"role": "user", "content": content}); convo = self.history
+        reply = split_reply(self.vlm.chat([{"role": "system", "content": SYSTEM}] + convo, 1000, 0.3, "Write reply"))
         # keep only the plain user text in history for later turns (context block is rebuilt each turn)
-        self.history[-1] = {"role": "user", "content": content[:-1] + [{"type": "text", "text": text or "Here is my plant."}]}
+        if not gm: self.history[-1] = {"role": "user", "content": content[:-1] + [{"type": "text", "text": text or "Here is my plant."}]}
         report = {}
         if self.observation.get("image_quality") != "poor" and self.observation.get("health") != "healthy" and self.observation.get("symptoms") and kb["coverage"] in ("good", "weak"):
             with span("tool", "Ground reply in KB records") as a:
@@ -466,7 +576,7 @@ class Session:
                              {k: v for k, v in self.observation.items() if not k.startswith("_")}, sent,
                              " ".join(self._user_text(m) for m in prior if m["role"] == "assistant"),
                              " ".join(self._user_text(m) for m in prior if m["role"] == "user") + " " + (text or ""),
-                             extra_context, any(isinstance(m["content"], list) and any(c["type"] != "text" for c in m["content"]) for m in self.history))
+                             extra_context, bool(photo and first) if gm else any(isinstance(m["content"], list) and any(c["type"] != "text" for c in m["content"]) for m in self.history), facts)
         if kb["results"]:
             cited = set(re.findall(r"\[(rec_\d+)\]", reply)) | set(report.get("used", []))
             emit_rag(kb, cited, "reply", report.get("used", []) if report.get("fallback") else [])
@@ -474,7 +584,7 @@ class Session:
         if asks and self.observation.get("image_quality") != "poor" and self.observation.get("health") != "healthy":
             reply = reply.rstrip() + ("\n---\n" if "\n---\n" not in reply else "\n") + \
                     "**Optional questions** (answer any you like for a sharper answer):\n" + "\n".join(f"{i}. {q}" for i, q in enumerate(asks, 1))
-        self.history.append({"role": "assistant", "content": reply})
+        if not gm: self.history.append({"role": "assistant", "content": reply})
         self.last = {"observation": self.observation, "kb": kb, "reply": reply, "stage": self.stage(not first)}
         return reply
 

@@ -39,13 +39,16 @@ export default function App() {
   useEffect(() => { refresh(); refreshChats() }, [])
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [items])
   const msgs = (list) => list.filter((m) => m.role).map(({ role, content, image }) => ({ role, content, image }))
-  useEffect(() => { api.context({ plant_id: plantId, messages: msgs(items), mode }).then((est) => setCtx((c) => (c && c.estimate === false ? c : { ...est, estimate: true }))).catch(() => {}) }, [plantId, mode, items.length])
+  // the meter is the server's saved ledger for this conversation: reload it on open / new chat and after every turn (never mid-turn: live spans own it then)
+  const busyRef = useRef(false); busyRef.current = busy
+  const refreshCtx = (cid, force) => api.context({ conversation_id: cid || 0, plant_id: plantId }).then((c) => { if (force || !busyRef.current) setCtx(c) }).catch(() => {})
+  useEffect(() => { refreshCtx(chatId) }, [chatId])
   const loadTrace = (id) => api.trace(id).then((t) => setTr((cur) => (cur?.id === id || !cur ? t : cur))).catch(() => {})
   const addSpan = (sp) => {   // spans arrive twice (started, finished): merge by id
     setTr((cur) => { if (!cur) return cur; const i = cur.spans.findIndex((x) => x.id === sp.id); const spans = [...cur.spans]; if (i < 0) spans.push(sp); else spans[i] = sp; return { ...cur, spans } })
-    if (sp.kind === 'context' && sp.attrs.segments) setCtx((c) => ({ ...c, segments: sp.attrs.segments, used: sp.attrs.used, limit: sp.attrs.limit, exact: sp.attrs.exact, estimate: false }))
+    if (sp.kind === 'context' && 'segments' in sp.attrs) setCtx((c) => ({ ...c, ...sp.attrs }))
   }
-  const newChat = (pid = plantId) => { setTr(null); setCtx(null); traceRef.id = null; setChatId(null); setItems([]); setPending(null); setPlantId(pid); setView('chat') }
+  const newChat = (pid = plantId) => { setTr(null); refreshCtx(0, true); traceRef.id = null; setChatId(null); setItems([]); setPending(null); setPlantId(pid); setView('chat') }
   async function openChat(id) {
     const c = await api.getChat(id)
     const meta = chats.find((x) => x.id === id)
@@ -80,11 +83,11 @@ export default function App() {
       await api.chat({ plant_id: plantId, conversation_id: cid, messages: msgs([...items, user]), mode, skill, trace_id: tid }, (ev) => {
         if (ev.type === 'token') setItems((cur) => { const c = [...cur]; c[slot] = { ...c[slot], content: c[slot].content + ev.text }; return c })
         else if (ev.type === 'span') addSpan(ev.span)
-        else if (ev.type === 'context') setCtx({ ...ev, model: ctx?.model })
+        else if (ev.type === 'context') setCtx(ev)
         else if (ev.type === 'error') setItems((cur) => { const c = [...cur]; c[slot] = { role: 'assistant', content: ev.text }; return c })
       })
     } finally {
-      setBusy(false); loadTrace(tid)
+      setBusy(false); loadTrace(tid); refreshCtx(cid, true)
       const turns = next.filter((m) => m.role === 'user').length
       refreshChats()
       if (turns === 1 || turns === 3) api.titleChat(cid).then(refreshChats)
@@ -132,7 +135,7 @@ export default function App() {
             </div>
           </>}
       </div>
-      {view === 'chat' && <Sidebar open={open} ctx={ctx} tr={tr} busy={busy} onRefresh={() => tr && loadTrace(tr.id)} plants={plants} plantId={plantId} refresh={refresh} version={version} bump={bump} />}
+      {view === 'chat' && <Sidebar open={open} ctx={ctx} chatId={chatId} tr={tr} busy={busy} onRefresh={() => tr && loadTrace(tr.id)} plants={plants} plantId={plantId} refresh={refresh} version={version} bump={bump} />}
     </div>
   )
 }

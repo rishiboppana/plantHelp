@@ -13,10 +13,9 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import db
 
-from src.pipeline import Session, DIAGNOSE_COMMANDS, NUM_CTX, SYSTEM as SKILL_TEXT, emit_rag
+from src.pipeline import Session, DIAGNOSE_COMMANDS, emit_rag, new_ledger, context_state
 from src.remote_vlm import MODELS
 from src import trace
-from src.trace import tok
 from src.build_index import build as build_index, load_config
 
 MODEL = MODELS[0]           # served via the Hugging Face router; see src/remote_vlm.py for the fallback order
@@ -207,32 +206,29 @@ MODE_HINT = {
 }
 
 
-def build_context(req: ChatIn):
-    plant = (db.rows("SELECT * FROM plants WHERE id=?", (req.plant_id,)) or [{}])[0]
-    profile = plant.get("profile") or "{}"
-    hist = db.rows("SELECT kind,text,created FROM entries WHERE plant_id=? ORDER BY id DESC LIMIT 5", (req.plant_id,))
-    refs = []
-    parts = {
-        "profile": f"Plant: {plant.get('name')} ({plant.get('species')}). Care profile: {profile}",
-        "history": "\n".join(f"[{h['created']}] {h['kind']}: {h['text']}" for h in hist),
-    }
-    conv = "".join(m.get("content", "") for m in req.messages)
-    images = sum(1 for m in req.messages if m.get("image"))
-    # pre-send estimate with the same keys the pipeline reports after the turn (see Session._record_context)
-    segs = [
-        {"key": "skill", "label": "Skill instructions", "tokens": tok(SKILL_TEXT) + tok(MODE_HINT.get(req.mode, ""))},
-        {"key": "profile", "label": "Plant profile", "tokens": tok(parts["profile"])},
-        {"key": "history", "label": "History", "tokens": tok(parts["history"])},
-        {"key": "answers", "label": "User answers", "tokens": tok(conv)},
-        {"key": "images", "label": "Photo", "tokens": images * 576},
-    ]
-    return parts, segs, refs
+def plant_context(plant_id):
+    """The saved plant profile and the last journal entries, as text for the prompt."""
+    plant = (db.rows("SELECT * FROM plants WHERE id=?", (plant_id,)) or [{}])[0]
+    hist = db.rows("SELECT kind,text,created FROM entries WHERE plant_id=? ORDER BY id DESC LIMIT 5", (plant_id,))
+    return {"profile": f"Plant: {plant.get('name')} ({plant.get('species')}). Care profile: {plant.get('profile') or '{}'}",
+            "history": "\n".join(f"[{h['created']}] {h['kind']}: {h['text']}" for h in hist)}
 
 
 @app.post("/api/context")
 def context(req: ChatIn):
-    _, segs, _ = build_context(req)
-    return {"segments": segs, "used": sum(s["tokens"] for s in segs), "limit": NUM_CTX, "model": MODEL}
+    """Live context-window reading for one conversation, from its saved ledger (real provider counts, the model's real limit)."""
+    if not req.conversation_id or not db.rows("SELECT 1 FROM conversations WHERE id=?", (req.conversation_id,)):
+        return {**context_state(new_ledger()), "segments": []}
+    s = get_session(req.conversation_id, req.plant_id)
+    return {**s.context_state(), "segments": s.segments}
+
+
+@app.get("/api/conversations/{cid}/graph")
+def conversation_graph(cid: int):
+    """The memory graph a long conversation was condensed into (null until it reaches the context threshold)."""
+    if not db.rows("SELECT 1 FROM conversations WHERE id=?", (cid,)): raise HTTPException(404, "no such conversation")
+    g = get_session(cid, 0).graph
+    return g.to_dict() if g else None
 
 
 # ---------- sessions: one pipeline Session per conversation, shared by /api/analyze and /api/chat ----------
@@ -343,7 +339,6 @@ async def analyze(body: dict):
 
 @app.post("/api/chat")
 async def chat(req: ChatIn):
-    parts, segs, _ = build_context(req)
     users = [m for m in req.messages if m["role"] == "user"]
     if not users: raise HTTPException(400, "no user message")
     cid = ensure_conversation(req.conversation_id, req.plant_id, users[0].get("content", ""))
@@ -352,11 +347,14 @@ async def chat(req: ChatIn):
     tr.meta.update(conversation_id=cid, plant_id=req.plant_id)
     m = users[-1]
     save_message(cid, "user", m.get("content", ""), m.get("image"))
+    sess = get_session(cid, req.plant_id)
+    if not sess.frozen: sess.frozen = plant_context(req.plant_id)     # taken once: later journal entries / profile edits do not change this chat's prompt
+    parts = sess.frozen
     extra = "\n".join(x for x in (parts["profile"], parts["history"], MODE_HINT.get(req.mode, "")) if x)
 
     def run():
         with trace.use(tid), trace.span("turn", "Chat turn", mode=req.mode):
-            s = get_session(cid, req.plant_id)
+            s = sess
             photo = str(UPLOADS / m["image"]) if m.get("image") else None
             reply = s.turn(m.get("content", ""), photo, extra, req.skill, {"profile": parts["profile"], "history": parts["history"]})
             kb = s.last["kb"] if s.last.get("intent") in ("diagnose", "answer") else {"results": []}
@@ -373,7 +371,7 @@ async def chat(req: ChatIn):
         loop, q = asyncio.get_running_loop(), asyncio.Queue()
         unsub = tr.subscribe(lambda sp: loop.call_soon_threadsafe(q.put_nowait, sp))   # spans arrive from worker threads
         yield json.dumps({"type": "conversation", "id": cid, "trace_id": tid}) + "\n"
-        yield json.dumps({"type": "context", "segments": segs, "used": sum(x["tokens"] for x in segs), "limit": NUM_CTX, "estimate": True}) + "\n"
+        yield json.dumps({"type": "context", **sess.context_state(), "segments": sess.segments}) + "\n"
         job = asyncio.ensure_future(run_in_threadpool(run))
         job.add_done_callback(lambda _: q.put_nowait(None))
         try:

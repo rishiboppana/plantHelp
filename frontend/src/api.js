@@ -34,6 +34,7 @@ export const api = {
   compare: (b) => post('/api/compare', b),
   plan: (b) => post('/api/plan', b),
   why: (b) => post('/api/why', b),
+  graph: (cid) => fetch(`/api/conversations/${cid}/graph`).then(j),
   context: (b) => post('/api/context', b),
   // NDJSON stream: onEvent({type: conversation|context|span|token|done|error, ...})
   async chat(body, onEvent) {

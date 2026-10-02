@@ -3,6 +3,7 @@ Smoke test: HF_TOKEN=... python -m src.remote_vlm --photo path/to/leaf.jpg [--te
 """
 import argparse, base64, json, mimetypes, os, ssl, threading, urllib.error, urllib.request
 from src.trace import span, tok
+from src.limits import context_limit
 
 try:  # python.org builds on macOS ship without root certs; use certifi's bundle when available
     import certifi
@@ -43,6 +44,7 @@ class RemoteVLM:
             raise RuntimeError("set the HF_TOKEN environment variable")
         self.timeout = timeout
         self._tl = threading.local()
+        self.on_usage = None       # optional callback(label, usage) after every successful call (the session's context ledger)
 
     @property
     def last_usage(self):
@@ -81,8 +83,11 @@ class RemoteVLM:
                     pt, ct = u.get("prompt_tokens"), u.get("completion_tokens")
                     source = "provider" if pt is not None and ct is not None else "estimate"
                     pt, ct = (pt, ct) if source == "provider" else (est_prompt, tok(out))
-                    self._tl.usage = {"prompt_tokens": pt, "completion_tokens": ct, "total_tokens": pt + ct, "source": source}
-                    a.update(self._tl.usage, model=model, failed_providers=tried)
+                    limit, lsrc = context_limit(model, self.base_url, _SSL)
+                    self._tl.usage = {"prompt_tokens": pt, "completion_tokens": ct, "total_tokens": pt + ct, "source": source,
+                                      "model": model, "limit": limit, "limit_source": lsrc}
+                    a.update(self._tl.usage, failed_providers=tried)
+                    if self.on_usage: self.on_usage(label, self._tl.usage)
                     return out
                 except urllib.error.HTTPError as e:
                     err = f"{model}: router returned {e.code}: {e.read().decode()[:200]}"
