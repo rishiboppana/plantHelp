@@ -8,4 +8,4 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install -r backend/requirements.txt
-      - run: python -m unittest tests.test_pipeline tests.test_retrieve tests.test_progress tests.test_eval_harness tests.test_diagnose
+      - run: python -m unittest tests.test_pipeline tests.test_retrieve tests.test_progress tests.test_eval_harness tests.test_diagnose tests.test_trace

@@ -443,7 +443,7 @@ async def chat(req: ChatIn):
 
     made = {}
 
-    def run(push=None):
+    def run(push=None, push_final=None):
         with trace.use(tid), trace.span("turn", "Chat turn", mode=req.mode):
             s = sess
             photo = str(UPLOADS / m["image"]) if m.get("image") else None
@@ -455,6 +455,7 @@ async def chat(req: ChatIn):
                            (req.plant_id, "diagnosis", reply, json.dumps({"record_ids": [r["record"]["record_id"] for r in kb["results"]],
                                                                           "coverage": kb.get("coverage")})))
             save_message(cid, "assistant", reply)
+            if push_final: push_final(reply)                       # the reply is final: show it now, before the namer and reminder agent run
             save_state(cid, s)
             try: plant_namer.name_plant(req.plant_id, cid)               # a plant with a placeholder name gets a model-written unique one
             except Exception: pass
@@ -464,11 +465,13 @@ async def chat(req: ChatIn):
 
     async def stream():
         loop, q = asyncio.get_running_loop(), asyncio.Queue()
+        final = None
         unsub = tr.subscribe(lambda sp: loop.call_soon_threadsafe(q.put_nowait, sp))   # spans arrive from worker threads
-        yield json.dumps({"type": "conversation", "id": cid, "trace_id": tid}) + "\n"
+        yield json.dumps({"type": "conversation", "id": cid, "trace_id": tid, "started": tr.started}) + "\n"
+        for sp in tr.to_dict()["spans"]: q.put_nowait(sp)           # replay what the photo analysis already logged before this stream opened
         yield json.dumps({"type": "context", **sess.context_state(), "segments": sess.segments}) + "\n"
         push = lambda d: loop.call_soon_threadsafe(q.put_nowait, {"_tok": d})     # reply pieces arrive from the worker thread as they are written
-        job = asyncio.ensure_future(run_in_threadpool(run, push))
+        job = asyncio.ensure_future(run_in_threadpool(run, push, lambda r: loop.call_soon_threadsafe(q.put_nowait, {"_final": r})))
         job.add_done_callback(lambda _: q.put_nowait(None))
         try:
             while True:
@@ -477,13 +480,17 @@ async def chat(req: ChatIn):
                 if "_tok" in sp:
                     yield json.dumps({"type": "token", "text": sp["_tok"]}) + "\n"
                     continue
+                if "_final" in sp:
+                    final = sp["_final"]
+                    yield json.dumps({"type": "final", "text": final, "diagnosis": (sess.last.get("diagnosis") or {}).get("status")}) + "\n"
+                    continue
                 yield json.dumps({"type": "span", "span": sp}) + "\n"       # live: started + finished snapshots, merged by id in the UI
             try:
                 reply = await job
             except Exception as e:
                 yield json.dumps({"type": "error", "text": f"Model call failed: {e}"}) + "\n"
                 return
-            yield json.dumps({"type": "final", "text": reply, "diagnosis": (sess.last.get("diagnosis") or {}).get("status")}) + "\n"   # the grounded reply replaces the streamed draft
+            if not final: yield json.dumps({"type": "final", "text": reply, "diagnosis": (sess.last.get("diagnosis") or {}).get("status")}) + "\n"   # the grounded reply replaces the streamed draft
             if made.get("reminders"): yield json.dumps({"type": "reminders", **made["reminders"]}) + "\n"
             yield json.dumps({"type": "done", "trace_id": tid}) + "\n"
         finally:

@@ -101,6 +101,7 @@ export default function App() {
           if (!streamed) await reveal(slot, ev.text)
         }
         else if (ev.type === 'reminders') setItems((cur) => [...cur, { reminders: ev }])
+        else if (ev.type === 'conversation') setTr((cur) => (cur?.id === ev.trace_id ? { ...cur, started: ev.started } : cur))
         else if (ev.type === 'span') addSpan(ev.span)
         else if (ev.type === 'context') setCtx(ev)
         else if (ev.type === 'error') setItems((cur) => { const c = [...cur]; c[slot] = { role: 'assistant', content: ev.text }; return c })

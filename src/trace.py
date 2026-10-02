@@ -14,6 +14,14 @@ REG, REG_LOCK, MAX_LIVE = {}, threading.Lock(), 60
 LOADER = None                      # set by the backend: tid -> saved dict | None (lets events append to an older trace)
 
 
+def _copy(obj):
+    """Deep copy through JSON. A running step keeps adding attrs from its own thread, so retry if the dict changes size mid-copy."""
+    for _ in range(5):
+        try: return json.loads(json.dumps(obj, default=str))
+        except RuntimeError: continue
+    return None
+
+
 def tok(s):
     """Rough token estimate (about 4 characters per token) used when the provider reports no usage."""
     if not isinstance(s, str): s = json.dumps(s, default=str)
@@ -28,7 +36,8 @@ class Trace:
     def ms(self): return round((time.time() - self.started) * 1000)
 
     def emit(self, span):
-        snap = json.loads(json.dumps(span, default=str))      # copy now: attrs keep changing while the span runs
+        snap = _copy(span)      # copy now: attrs keep changing while the span runs
+        if snap is None: return  # a tracing hiccup must never break the pipeline
         for f in list(self.subs):
             try: f(snap)
             except Exception: pass
@@ -38,7 +47,7 @@ class Trace:
         return lambda: self.subs.remove(f) if f in self.subs else None
 
     def to_dict(self):
-        with self.lock: return {"id": self.id, "started": self.started, "meta": self.meta, "spans": json.loads(json.dumps(self.spans, default=str))}
+        with self.lock: return {"id": self.id, "started": self.started, "meta": self.meta, "spans": [c for c in map(_copy, self.spans) if c]}
 
     @classmethod
     def from_dict(cls, d):

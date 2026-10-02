@@ -32,6 +32,14 @@ export function CallList({ calls, limit }) {
   )
 }
 
+// ticks while a turn is running so open steps show live elapsed time (the server only sends a span when it starts or ends)
+function useNow(active) {
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => { if (!active) return undefined; const t = setInterval(() => setNow(Date.now()), 150); return () => clearInterval(t) }, [active])
+  return now
+}
+const elapsed = (s, now, started) => (s.status === 'running' && started ? Math.max(0, now - started * 1000 - s.start_ms) : s.dur_ms)
+
 // ---------- helpers ----------
 const KIND = { turn: ['▶️', '#2d6a4f'], model: ['🤖', '#7b61c4'], retrieval: ['🔎', '#457b9d'], tool: ['🛠️', '#e07a5f'],
   context: ['🧠', '#52b788'], rag: ['📚', '#2a9d8f'], event: ['📅', '#c9a227'], wait: ['⏳', '#999'] }
@@ -39,16 +47,16 @@ const tokens = (s) => (s.kind === 'model' && s.attrs.total_tokens != null ? s.at
 const ms = (v) => (v == null ? '…' : v >= 1000 ? `${(v / 1000).toFixed(1)}s` : `${v}ms`)
 const HIDE = new Set(['segments', 'calls', 'chunks', 'prompt_tokens', 'completion_tokens', 'total_tokens', 'source'])
 
-function stats(spans) {
+function stats(spans, live) {
   const done = spans.filter((s) => s.kind !== 'event' && s.kind !== 'wait' || (s.kind === 'wait' && (s.dur_ms || 0) >= 50))
   const calls = spans.filter((s) => s.kind === 'model')
-  const start = Math.min(...done.map((s) => s.start_ms)), end = Math.max(...done.map((s) => s.start_ms + (s.dur_ms || 0)))
+  const start = Math.min(...done.map((s) => s.start_ms)), end = Math.max(...done.map((s) => s.start_ms + (live ? elapsed(s, live.now, live.started) : s.dur_ms) || 0))
   const slow = spans.filter((s) => ['model', 'retrieval', 'tool'].includes(s.kind) && s.dur_ms != null).sort((a, b) => b.dur_ms - a.dur_ms)[0]
   return { total: done.length ? end - start : 0, tokens: calls.reduce((a, s) => a + tokens(s), 0), calls: calls.length, slow }
 }
 
-function Stats({ spans }) {
-  const st = stats(spans)
+function Stats({ spans, live }) {
+  const st = stats(spans, live)
   return (
     <div className="tl-stats">
       <div><small>Total tokens</small><b>{n(st.tokens)}</b><span>{st.calls} model call{st.calls === 1 ? '' : 's'}</span></div>
@@ -59,13 +67,14 @@ function Stats({ spans }) {
 }
 
 // ---------- timeline ----------
-function Timeline({ spans }) {
+function Timeline({ spans, live }) {
   const [open, setOpen] = useState(null)
   const rows = spans.filter((s) => !(s.kind === 'wait' && (s.dur_ms || 0) < 50) && s.kind !== 'rag' && !(s.kind === 'context' && 'segments' in s.attrs))
   const byId = Object.fromEntries(spans.map((s) => [s.id, s]))
   const depth = (s) => { let d = 0; for (let p = byId[s.parent]; p; p = byId[p.parent]) d++; return d }
   const sorted = [...rows].sort((a, b) => a.start_ms - b.start_ms)
-  const t0 = Math.min(...sorted.map((s) => s.start_ms)), t1 = Math.max(...sorted.map((s) => s.start_ms + (s.dur_ms || 0)), t0 + 1)
+  const dur = (s) => (live ? elapsed(s, live.now, live.started) : s.dur_ms) || 0
+  const t0 = Math.min(...sorted.map((s) => s.start_ms)), t1 = Math.max(...sorted.map((s) => s.start_ms + dur(s)), t0 + 1)
   const slowest = stats(spans).slow
   return (
     <div className="tl">
@@ -79,9 +88,9 @@ function Timeline({ spans }) {
               <span className="tl-ic">{icon}</span>
               <span className="tl-name">{s.name}</span>
               {s.kind === 'model' && s.attrs.total_tokens != null && <span className="tl-tok" title={`${s.attrs.source === 'provider' ? 'reported by the provider' : 'estimated'}`}>{n(s.attrs.prompt_tokens)}→{n(s.attrs.completion_tokens)} tok</span>}
-              <span className="tl-ms">{running ? <i className="spin" /> : ms(s.dur_ms)}</span>
+              <span className="tl-ms">{running ? <><i className="spin" />{live ? ` ${ms(dur(s))}` : ''}</> : ms(s.dur_ms)}</span>
             </div>
-            <div className="tl-track"><div className={running ? 'tl-bar run' : 'tl-bar'} style={{ left: `${((s.start_ms - t0) / (t1 - t0)) * 100}%`, width: `${Math.max(1.5, ((running ? t1 - s.start_ms : s.dur_ms || 0) / (t1 - t0)) * 100)}%`, background: s.status === 'error' ? '#c0392b' : color }} /></div>
+            <div className="tl-track"><div className={running ? 'tl-bar run' : 'tl-bar'} style={{ left: `${((s.start_ms - t0) / (t1 - t0)) * 100}%`, width: `${Math.max(1.5, ((running ? dur(s) : s.dur_ms || 0) / (t1 - t0)) * 100)}%`, background: s.status === 'error' ? '#c0392b' : color }} /></div>
             {open === s.id && <pre className="tl-attrs">{extra.length ? extra.map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`).join('\n') : 'no details'}</pre>}
           </div>
         )
@@ -132,14 +141,16 @@ function Rag({ spans }) {
 export function TracePanel({ tr, busy, onRefresh, version }) {
   useEffect(() => { if (tr?.id && !busy) onRefresh() }, [version])   // event actions append to the trace on the server
   const spans = tr?.spans || []
+  const now = useNow(busy)
+  const live = busy && tr?.started ? { now, started: tr.started } : null
   const ctxSpan = [...spans].reverse().find((s) => s.kind === 'context' && 'segments' in s.attrs)
   if (!spans.length) return <><h3>Trace</h3><p>Send a message or photo and every step I take shows up here, live.</p></>
   return (
     <>
       <div className="tl-title"><h3>What just happened</h3>{!busy && <button onClick={onRefresh} title="Reload">↻</button>}</div>
-      <Stats spans={spans} />
+      <Stats spans={spans} live={live} />
       <h4 className="tl-h">Timeline</h4>
-      <Timeline spans={spans} />
+      <Timeline spans={spans} live={live} />
       <h4 className="tl-h">Context window</h4>
       {ctxSpan ? <ContextBar ctx={{ ...ctxSpan.attrs }} /> : <p>Waiting for the prompt to be built…</p>}
       <h4 className="tl-h">RAG evidence</h4>
