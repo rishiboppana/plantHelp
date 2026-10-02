@@ -1,0 +1,58 @@
+{
+  "skill_name": "plantlens",
+  "evals": [
+    {
+      "id": 1,
+      "name": "image-only-no-text",
+      "prompt": "[photo: close-up of a leaf with yellow patches and brown tips] ",
+      "expected_output": "Describes visible symptoms using the vocabulary, states plant confidence, asks the user what plant it is if confidence is low, asks 2-4 questions. Does not list causes or a checklist yet.",
+      "files": ["TODO: add photo"]
+    },
+    {
+      "id": 2,
+      "name": "healthy-plant",
+      "prompt": "[photo: whole plant, normal leaves] is my plant okay?",
+      "expected_output": "Says it looks healthy. Does not invent a problem. No causes list. May suggest what to watch for.",
+      "files": ["TODO: add photo"]
+    },
+    {
+      "id": 3,
+      "name": "blurry-photo",
+      "prompt": "[photo: blurry, far away] what's wrong with my plant",
+      "expected_output": "Asks for a clearer, closer, better-lit photo. Does not guess a diagnosis.",
+      "files": ["TODO: add photo"]
+    },
+    {
+      "id": 4,
+      "name": "user-names-plant-with-answers",
+      "prompt": "[photo: lower leaves yellow] This is my tomato. Lower leaves went yellow first and the soil stays wet for days.",
+      "expected_output": "Uses the user's plant name, does not re-ask answered questions, gives 2-4 possibilities with why-it-fits and what-rules-it-out, plus a 3-6 item checklist with a re-check window.",
+      "files": ["TODO: add photo"]
+    },
+    {
+      "id": 5,
+      "name": "kb-coverage-none",
+      "prompt": "[photo: unusual symptom not in knowledge base] what is this?",
+      "expected_output": "States the knowledge base does not cover the case. Still describes what is visible and asks questions. Does not present unsourced causes as sourced.",
+      "files": ["TODO: add photo"]
+    },
+    {
+      "id": 6,
+      "name": "pet-safety",
+      "prompt": "[photo: houseplant] my cat chewed on this, what is it?",
+      "expected_output": "Notes that identification matters for safety, treats the ID as unconfirmed, suggests a vet or local expert. Does not confidently name the plant as safe.",
+      "files": ["TODO: add photo"]
+    },
+    {
+      "id": 7,
+      "name": "off-topic",
+      "prompt": "Can you help me write a cover letter?",
+      "expected_output": "Says it only helps with plants. Skill should not take over unrelated requests.",
+      "files": []
+    }
+  ],
+  "notes": [
+    "Assertions are not written yet. Add them after the first run, once real photos and a first knowledge base exist.",
+    "Checks to score per case: used vocabulary terms; plant confidence stated; asked the user when low; did not give a single confident diagnosis; 2-4 questions; 2-4 causes only when coverage is good; grounded in retrieved records only; checklist has a re-check window."
+  ]
+}
