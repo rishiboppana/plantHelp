@@ -94,7 +94,7 @@ class QuestionPath(unittest.TestCase):
         web_call = next(c for c in vlm.calls if c[0] == "Answer with web results")
         self.assertIn("no results", web_call[1][-1]["content"])
         self.assertEqual(vlm.labels[-1], "Ask for missing details")        # it could not answer, so it asks for what it needs
-        self.assertIn("tell me", reply)
+        self.assertIn("details would help", reply)
         self.assertNotIn("Sources", reply)
 
     def test_general_prompt_offers_the_search_tool(self):

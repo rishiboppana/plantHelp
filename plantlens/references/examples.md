@@ -1,6 +1,6 @@
 # Examples
 
-These show the shape of good replies. The records and plant details here are placeholders for illustration; real answers must come from retrieved knowledge-base records, never from these examples.
+These show the content of good replies (in the app they are written as a short, natural chat message with the detail underneath; the bold headings here are only for reading the examples). The records and plant details here are placeholders for illustration; real answers must come from retrieved knowledge-base records, never from these examples.
 
 ---
 

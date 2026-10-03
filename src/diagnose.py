@@ -63,16 +63,14 @@ def assess(kb, evidence):
 
 
 def diagnosis_text(dx):
-    """Markdown block appended to the reply's detail. Empty when there are no candidates."""
+    """Plain-language note appended to the reply's detail. The follow-up question itself goes into the message (and the card's buttons),
+    not into a list here. Empty when there are no candidates."""
     if dx["status"] == "none": return ""
-    out = [f"**Diagnosis ({dx['status']}):** {dx['headline']}"]
-    if dx["supporting"]: out.append("- Supported by: " + "; ".join(dx["supporting"]))
-    if dx["against"]: out.append("- Against: " + "; ".join(dx["against"]))
-    if dx["ruled_out"]: out.append("- Unlikely given your answers: " + ", ".join(dx["ruled_out"]))
-    if dx["confirm"]:
-        out.append("**To confirm, tell me:**\n" + "\n".join(f"{i}. {c['question']} (about {c['about']})" for i, c in enumerate(dx["confirm"], 1)))
-    elif dx["status"] == "confirmed" and dx["inspect"]:
-        out.append("**To be sure before acting:** " + dx["inspect"][0].rstrip(".") + ".")
+    out = [f"Where I've landed ({dx['status']}): {dx['headline']}"]
+    if dx["supporting"]: out.append("What points that way: " + "; ".join(dx["supporting"]) + ".")
+    if dx["against"]: out.append("What argues against it: " + "; ".join(dx["against"]) + ".")
+    if dx["ruled_out"]: out.append("Unlikely given your answers: " + ", ".join(dx["ruled_out"]) + ".")
+    if dx["status"] == "confirmed" and dx["inspect"]: out.append("To be sure before acting: " + dx["inspect"][0].rstrip(".") + ".")
     return "\n".join(out)
 
 
@@ -116,4 +114,12 @@ def clarify(vlm, situation, text="", have=""):
 
 
 def clarify_text(qs):
-    return "**I can't answer this confidently yet. To help me, tell me:**\n" + "\n".join(f"{i}. {q}" for i, q in enumerate(qs, 1)) if qs else ""
+    """The questions as a couple of natural sentences that continue the message."""
+    return ("I can't pin this down yet, and a couple of details would help. " + " ".join(qs)) if qs else ""
+
+
+def add_to_message(reply, text):
+    """Put `text` at the end of the chat message (before the divider), so questions read as part of the conversation."""
+    if not text: return reply
+    head, sep, rest = reply.partition("\n---\n")
+    return head.rstrip() + " " + text + sep + rest

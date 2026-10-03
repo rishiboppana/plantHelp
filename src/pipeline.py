@@ -127,7 +127,7 @@ If the answer depends on things you cannot see (pot size, light, season, soil), 
 If the user describes a problem, suggest sending a photo or typing /diagnose so you can check it properly.
 Never recommend specific pesticide products or doses. For pets or children eating a plant, suggest a vet or poison-control line.
 If it is not about plants, say you only help with plants.
-Start with ONE plain sentence that directly answers the question, alone on the first line. Only if extra detail is genuinely useful, add a line containing only --- and then the detail; otherwise stop after the first sentence.
+Start with the direct answer in one or two plain, friendly sentences, the way a knowledgeable friend would say it. Only if extra detail is genuinely useful, add a line containing only --- and then the detail; otherwise stop after the answer.
 You must NOT state plant-care facts from memory (watering amounts or schedules, light, soil, fertilizer, repotting, temperature, pests, toxicity or safety for pets or people, edibility).
 Answer such questions ONLY from the REFERENCES in the context, and cite the record you used as [rec_...]. Use a reference only if it directly answers the question; do not stretch a loosely related one.
 If no reference answers it, reply with exactly one line, SEARCH: <short web search query>, and nothing else.
@@ -148,27 +148,29 @@ Say which source you relied on by its site name. If the results do not answer th
 Never recommend specific pesticide products or doses."""
 
 
-FORMAT = ("FORMAT: write ONE plain sentence (under 25 words) giving the bottom line, alone on the first line. Then a line containing only --- . "
-          "Then the sections. The user sees only the first line unless they tap to expand.")
+FORMAT = ("FORMAT: reply the way a knowledgeable friend would in a chat: a short, natural message of 2 to 4 sentences (under 70 words), in plain conversational "
+          "language and the first person (\"I can see...\", \"my best guess is...\"). Say what you notice, what you think is going on and how sure you are, and end with at most ONE "
+          "natural follow-up question, only if the answer would help. No headings, labels, bullet points or numbered lists in this message, and never the words 'Overall' or 'Plant:'. "
+          "Then a line containing only --- and below it the fuller reasoning (what you saw, the possible causes and why each fits) in plain short paragraphs. "
+          "The user reads the message first and can tap to expand the rest.")
 
 
 def split_reply(reply):
-    """Normalise a reply to 'one-line summary\\n---\\ndetail' (summary only when there is no detail)."""
+    """Normalise a reply to 'message\n---\ndetail'. The message is the natural chat reply (kept whole, paragraphs included);
+    a short reply with no detail stays as it is, and a long one with no divider is cut into a short message plus the full text."""
     reply = reply.strip()
     m = re.split(r"\n\s*-{3,}\s*\n", reply, maxsplit=1)
     if len(m) == 2 and m[0].strip():
-        head, detail = m[0].strip(), m[1].strip()
-        lines = head.splitlines()
-        summary, detail = lines[0].strip(), ("\n".join(lines[1:]).strip() + "\n" + detail).strip()
+        summary, detail = m[0].strip(), m[1].strip()
         norm = lambda t: re.sub(r"[^a-z0-9]+", " ", t.lower()).strip()
         if norm(detail).startswith(norm(summary)[:60]):
             rest = re.sub(r"^\s*" + re.escape(summary.strip().rstrip(".")) + r"\.?\s*(?:-{3,}\s*)?", "", detail, count=1).strip()
-            detail = rest if len(norm(rest)) > 20 else ""   # the model repeated the summary: drop the repeat, keep anything new
+            detail = rest if len(norm(rest)) > 20 else ""   # the model repeated the message: drop the repeat, keep anything new
         return f"{summary}\n---\n{detail}" if detail else summary
-    plain = re.sub(r"[*_#>`]", "", reply)
-    first = re.split(r"(?<=[.!?])\s", plain.strip().splitlines()[0] if plain.strip() else "", 1)[0][:200] if plain.strip() else ""
-    if "\n" not in reply and len(reply) <= 220:
-        return reply                                   # already a single short line
+    if len(reply) <= 500 and "**" not in reply:
+        return reply                                   # already a short, natural message
+    plain = re.sub(r"[*_#>`]", "", reply).strip()
+    first = " ".join(re.split(r"(?<=[.!?])\s", plain.splitlines()[0] if plain else "")[:2])[:320]
     return f"{first}\n---\n{reply}"
 
 
@@ -202,25 +204,25 @@ def clean_observation(raw):
 
 def allowed_sections(obs, coverage, answered):
     """Apply the 'First decide what to write' table from SKILL.md in code, with the app's change: questions are optional,
-    so provisional causes are shown straight away and answers only refine them."""
+    so provisional causes are shown straight away and answers only refine them. Written as what to say, not as a form to fill."""
     if obs.get("image_quality") == "poor":
-        return "a short request for a better photo and NOTHING else"
+        return "a short, friendly request for a better photo and NOTHING else"
     if obs.get("health") == "healthy":
-        return "1 What I see, 2 Plant, 3 Overall, plus one line on what to watch for. No causes, no questions, no checklist"
+        return ("say what you see, name the plant and how sure you are, and that it looks healthy, with one line on what to watch for. "
+                "No causes, no questions, no checklist")
     if not obs.get("symptoms"):
-        return ("1 What I see, 2 Plant, 3 Overall (say Not sure), then ask for a closer, well-lit photo of the part that looks wrong. "
-                "No causes, no checklist. Do not write any questions; the app adds them")
+        return ("say what you can see and that you can't spot a clear problem yet, then ask for a closer, well-lit photo of the part that looks wrong. "
+                "No causes, no checklist. Do not ask any other question")
     unsure = (obs.get("plant") or {}).get("confidence") != "high" and not answered
-    plant = "2 Plant (say how sure you are; the user may confirm it if they like)" if unsure else "2 Plant"
+    plant = "name the plant and how sure you are (the user may confirm it if they like)" if unsure else "name the plant"
     if coverage == "none":
-        return (f"1 What I see, {plant}, 3 Overall, plus the sentence 'My knowledge base does not cover this case, so I won't list causes.' "
-                "No causes; the only checklist is: look closely at the undersides of leaves and re-check in 48 hours. "
-                "Do not write any questions; the app adds them")
+        return (f"say what you see, {plant}, and include the sentence 'My knowledge base does not cover this case, so I won't list causes.' "
+                "No causes; the only advice is to look closely at the undersides of leaves and re-check in 48 hours. Do not ask any other question")
     if not answered:
-        return (f"1 What I see, {plant}, 3 Overall, 5 Possible causes (2-4, say they are provisional until the user shares more). "
-                "Do not write Next steps or any questions; the app adds them from the records")
-    return ("1 What I see, 2 Plant, 3 Overall, 5 Possible causes (2-4, each from the records). "
-            "Do not write Next steps or any questions; the app adds them from the records")
+        return (f"say what you see, {plant}, and put your leading ideas (2-4 possible causes, said to be provisional until the user shares more) in the detail. "
+                "Do not write Next steps; the app adds them from the records")
+    return ("say what you see, name the plant, and put the possible causes (2-4, each from the records) in the detail. "
+            "Do not write Next steps; the app adds them from the records")
 
 
 def rag_chunks(kb, cited=(), fallback=()):
@@ -763,7 +765,7 @@ class Session:
                 emit_rag(refkb, set(cited), "answer")
         if unable:
             with span("tool", "Ask for missing details"):
-                reply = reply.rstrip() + ("\n" if "\n---\n" in reply else "\n---\n") + diagnose.clarify_text(diagnose.clarify(self.vlm, "the question could not be answered from the knowledge base or the web", text, found))
+                reply = diagnose.add_to_message(reply, diagnose.clarify_text(diagnose.clarify(self.vlm, "the question could not be answered from the knowledge base or the web", text, found)))
         self._record_context(GENERAL, found, rag, earlier + " ".join(m["content"] for m in prior if m["role"] == "assistant"),
                              " ".join(m["content"] for m in prior if m["role"] == "user") + " " + text, extra_context, False, facts)
         if not self.graph: self.qa_history += [{"role": "user", "content": text}, {"role": "assistant", "content": reply}]
@@ -801,9 +803,11 @@ class Session:
                + "\n\nOBSERVATION:\n" + json.dumps({**{k: v for k, v in self.observation.items() if not k.startswith("_")}, "plant": plant_line(self.observation.get("plant"))})
                + f"\n\nPLANT IDENTITY: {plant_line(self.observation.get('plant'))}. Name the plant exactly this way. Confirmed = say the name; 'looks like' = offer it as a guess "
                  "and let the user confirm; could not tell = say so and list the maybes. Never use a guessed name as fact in the advice."
-               + (f"\n\nDIAGNOSIS (decided by the app from the records and the user's answers): {dx['headline']} Status: {dx['status']}. The first line must state this "
-                  "diagnosis plainly with its status (confirmed / most likely / can't tell yet). Never sound more certain than the status." if dx["status"] != "none" and self.observation.get("health") != "healthy" else "")
-               + f"\n\nSECTIONS YOU MAY WRITE THIS TURN: {allowed_sections(self.observation, kb['coverage'], not first)}.\nTreat as fact only what the photo shows or the user wrote; never state that the user said something they did not.\n{FORMAT}")
+               + (f"\n\nDIAGNOSIS (decided by the app from the records and the user's answers): {dx['headline']} Status: {dx['status']}. Say this plainly in your first sentence, "
+                  "in your own words, with how sure it is (confirmed / most likely / can't tell yet). Never sound more certain than the status."
+                  + (f" If you ask a follow-up question, ask only this one, naturally and in your own words (it separates the top causes): {dx['confirm'][0]['question']}" if dx["confirm"] else "")
+                  if dx["status"] != "none" and self.observation.get("health") != "healthy" else "")
+               + f"\n\nWHAT TO COVER THIS TURN: {allowed_sections(self.observation, kb['coverage'], not first)}.\nTreat as fact only what the photo shows or the user wrote; never state that the user said something they did not.\n{FORMAT}")
         content = ([{"type": "image_path", "path": photo}] if first and photo else []) + [{"type": "text", "text": (text or "Here is my plant.") + "\n\n" + ctx}]
         if gm: convo = [{"role": "user", "content": content}]
         else: self.history.append({"role": "user", "content": content}); convo = self.history
@@ -839,7 +843,7 @@ class Session:
             with span("tool", "Ask for missing details"):
                 qs = diagnose.clarify(self.vlm, "the photo shows no clear symptom or the knowledge base has no matching cause", text,
                                       f"plant: {plant_line(self.observation.get('plant'))}; symptoms seen: {', '.join(self.observation.get('symptoms') or []) or 'none'}")
-                reply = reply.rstrip() + ("\n---\n" if "\n---\n" not in reply else "\n") + diagnose.clarify_text(qs)
+                reply = diagnose.add_to_message(reply, diagnose.clarify_text(qs))
         if shown and dx["status"] != "none":
             reply = reply.rstrip() + ("\n---\n" if "\n---\n" not in reply else "\n") + diagnose.diagnosis_text(dx)   # verdict + the questions that would settle it: written by code
         if not gm: self.history.append({"role": "assistant", "content": reply})

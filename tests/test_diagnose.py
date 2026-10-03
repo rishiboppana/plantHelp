@@ -22,7 +22,7 @@ class T(unittest.TestCase):
     def test_no_answers_is_not_confirmed_and_asks_questions(self):
         dx = assess(kb(WET, DRY), {})
         self.assertNotEqual(dx["status"], "confirmed"); self.assertTrue(dx["confirm"])
-        self.assertIn("To confirm", diagnosis_text(dx))
+        self.assertNotIn("To confirm", diagnosis_text(dx))      # the question is asked in the message, not as a form list
 
     def test_confirmed_needs_support_margin_and_no_contradiction(self):
         ev = {"Is the soil wet for days?": "yes", "Is the soil dry deep down?": "no", "Does it perk up after watering?": "no"}
@@ -85,7 +85,7 @@ class Clarify(unittest.TestCase):
         class V:
             def chat(self, *a, **k): return "1. Which leaves are affected?\n2) Did you move the plant recently?\n- Is there webbing on the leaves?\nHere is some advice."
         qs = clarify(V(), "x", "help")
-        self.assertEqual(len(qs), 3); self.assertTrue(all(q.endswith("?") for q in qs)); self.assertIn("tell me", clarify_text(qs))
+        self.assertEqual(len(qs), 3); self.assertTrue(all(q.endswith("?") for q in qs)); self.assertIn("details would help", clarify_text(qs))
 
     def test_failure_falls_back_to_generic_questions(self):
         from src.diagnose import clarify, GENERIC_ASKS
@@ -96,3 +96,11 @@ class Clarify(unittest.TestCase):
     def test_cant_answer_detector(self):
         from src.diagnose import CANT
         self.assertTrue(CANT.search("I could not confirm that.")); self.assertTrue(CANT.search("I'm not sure which plant")); self.assertFalse(CANT.search("Water when the top inch is dry."))
+
+
+class Natural(unittest.TestCase):
+    def test_questions_join_the_message_not_the_detail(self):
+        from src.diagnose import add_to_message
+        self.assertEqual(add_to_message("Looks dry.\n---\ndetail", "Which leaves?"), "Looks dry. Which leaves?\n---\ndetail")
+        self.assertEqual(add_to_message("Looks dry.", "Which leaves?"), "Looks dry. Which leaves?")
+        self.assertEqual(add_to_message("x", ""), "x")

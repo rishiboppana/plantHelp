@@ -92,7 +92,7 @@ select { font: inherit; border: 0; background: var(--light); color: var(--dark);
 
 @media (max-width: 800px) { .side { position: absolute; right: 0; top: 0; bottom: 0; } }
 
-.reasoning .summary{line-height:1.45}
+.reasoning .summary{line-height:1.45;white-space:pre-wrap}
 .reasoning .summary.tap{cursor:pointer}
 .reasoning .chev{opacity:.55;font-size:.85em;white-space:nowrap}
 .reasoning .detail{margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,.1);white-space:pre-wrap;font-size:.92em}
